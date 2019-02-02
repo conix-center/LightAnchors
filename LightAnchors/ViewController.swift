@@ -8,6 +8,7 @@
 
 import UIKit
 import ARKit
+import VideoToolbox
 
 class ViewController: UIViewController {
 
@@ -17,6 +18,7 @@ class ViewController: UIViewController {
     let trackingStateLabel = UILabel()
     
     let locationView = LocationView(frame: CGRect.zero)
+    let colorView = UIView()
     
     var targetPoint3d: SCNVector3?
  //   var lastFrame: ARFrame?
@@ -24,8 +26,14 @@ class ViewController: UIViewController {
     
     var planes = [ARPlaneAnchor: Plane]()
     
+    var lightDecoder = LightDecoder()
+    
+    let fileNameDateFormatter = DateFormatter()
+    
     init () {
         super.init(nibName: nil, bundle: nil)
+        
+        fileNameDateFormatter.dateFormat = "yyyy-MM-dd-HH-mm-ss-SSS"
         
         sceneView.scene = scene
         sceneView.delegate = self
@@ -60,7 +68,13 @@ class ViewController: UIViewController {
         trackingStateLabel.leftAnchor.constraint(equalTo: view.leftAnchor, constant: 10).isActive = true
         trackingStateLabel.rightAnchor.constraint(equalTo: view.rightAnchor).isActive = true
         trackingStateLabel.heightAnchor.constraint(equalToConstant: 50)
-
+        
+        view.addSubview(colorView)
+        colorView.translatesAutoresizingMaskIntoConstraints = false
+        colorView.widthAnchor.constraint(equalTo: view.widthAnchor, multiplier: 0.25).isActive = true
+        colorView.heightAnchor.constraint(equalTo: view.widthAnchor, multiplier: 0.2).isActive = true
+        colorView.rightAnchor.constraint(equalTo: view.rightAnchor, constant: -20).isActive = true
+        colorView.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -30).isActive = true
         
     }
     
@@ -83,6 +97,8 @@ class ViewController: UIViewController {
         scene.rootNode.addChildNode(sphere)
         
         trackingStateLabel.textColor = UIColor.red
+        
+        colorView.backgroundColor = UIColor.red
 
     }
 
@@ -112,6 +128,9 @@ class ViewController: UIViewController {
                 }
             }
  //       }
+        
+        
+        
     }
     
     
@@ -137,6 +156,53 @@ class ViewController: UIViewController {
         if let plane = planes[anchor] {
             plane.update(anchor)
         }
+    }
+    
+    
+    func savePixelBuffer(_ buffer: CVPixelBuffer) {
+        let now = Date()
+        let dateString = fileNameDateFormatter.string(from: now)
+        let fileName = String(format: "%@.gray", dateString)
+        
+        let paths = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)
+        if let filePath = paths.first?.appendingPathComponent(fileName) {
+            let format = CVPixelBufferGetPixelFormatType(buffer)
+            let width = CVPixelBufferGetWidth(buffer)
+            let height = CVPixelBufferGetHeight(buffer)
+            let bytesPerRow = CVPixelBufferGetBytesPerRow(buffer)
+            
+            NSLog("pixelBuffer width: %d, height: %d, format: \(format), bytes per row: \(bytesPerRow) ", width, height)
+            
+            let grayPlaneHeight = 1920
+            let grayPlaneWidth = 1440
+            var grayPlaneIndex = 0
+            let planeCount = CVPixelBufferGetPlaneCount(buffer)
+            for planeIndex in 0..<planeCount {
+                let planeHeight = CVPixelBufferGetHeightOfPlane(buffer, planeIndex)
+                let planeWidth = CVPixelBufferGetWidthOfPlane(buffer, planeIndex)
+                if planeWidth == grayPlaneWidth && planeHeight == grayPlaneHeight {
+                    grayPlaneIndex = planeIndex
+                }
+            }
+    
+            let numGrayBytes = grayPlaneHeight*grayPlaneWidth
+            
+            CVPixelBufferLockBaseAddress(buffer, .readOnly)
+            //let dataSize = CVPixelBufferGetDataSize(frame.capturedImage)
+            NSLog("dataSize: %d", numGrayBytes)
+            if let baseAddressGray = CVPixelBufferGetBaseAddressOfPlane(buffer, grayPlaneIndex) {
+                NSLog("frame.captureImage: \(buffer)\n\n")
+                NSLog("baseAddress: \(baseAddressGray)")
+                let bufferData = Data(bytes: baseAddressGray, count: numGrayBytes)
+                do {
+                    try bufferData.write(to: filePath)
+                } catch {
+                    NSLog("error writing to file")
+                }
+            }
+            CVPixelBufferUnlockBaseAddress(buffer, .readOnly)
+        }
+        
     }
     
 }
@@ -202,20 +268,133 @@ extension ViewController: ARSCNViewDelegate {
 
 extension ViewController: ARSessionDelegate {
     func session(_ session: ARSession, didUpdate frame: ARFrame) {
-        let capturedImage: CVPixelBuffer = frame.capturedImage
-        if let capturedDepthData: AVDepthData = frame.capturedDepthData {
+        savePixelBuffer(frame.capturedImage)
             
-        }
+            
+//            CVPixelBufferLockBaseAddress(frame.capturedImage, .readOnly)
+//            let dataSize = CVPixelBufferGetDataSize(frame.capturedImage)
+//            NSLog("dataSize: %d", dataSize)
+//            if let baseAddress = CVPixelBufferGetBaseAddress(frame.capturedImage) {
+//                NSLog("frame.captureImage: \(frame.capturedImage)\n\n")
+//                NSLog("baseAddress: \(baseAddress)")
+//                let bufferData = Data(bytes: baseAddress, count: dataSize)
+//                do {
+//                    try bufferData.write(to: filePath)
+//                } catch {
+//                    NSLog("error writing to file")
+//                }
+//            }
+//            CVPixelBufferUnlockBaseAddress(frame.capturedImage, .readOnly)
+    //    }
+      //  let ciImage = CIImage(cvPixelBuffer: frame.capturedImage)
+        NSLog("new frame")
+
+//        lightDecoder.add(coreImage: ciImage)
+//        if let capturedDepthDataBuffer: AVDepthData = frame.capturedDepthData {
+//            
+//        }
+//        
+//        let imageWidth = CVPixelBufferGetWidth(capturedImageBuffer)
+//        let imageHeight = CVPixelBufferGetHeight(capturedImageBuffer)
+//        let bytesPerRow = CVPixelBufferGetBytesPerRow(capturedImageBuffer)
+
         
-  //      lastFrame = frame
-        if let point3d = targetPoint3d {
-            let point2dV = sceneView.projectPoint(point3d)
-            //NSLog("x: %f, y: %f, z: %f", point2dV.x, point2dV.y, point2dV.z)
-            let point2d = CGPoint(x: CGFloat(point2dV.x), y: CGFloat(point2dV.y))
-            DispatchQueue.main.async {
-                self.locationView.move(to: point2d)
-            }
-        }
+//        let coreImage = CIImage(cvPixelBuffer: capturedImageBuffer)
+//        let context = CIContext(options: nil)
+//        let cgImage = context.createCGImage(ciImage, from: ciImage.extent)
+//        let uiImage = UIImage(cgImage: cgImage!)
+        
+        
+
+        
+        
+  
+
+//            var cgImage: CGImage?
+//            VTCreateCGImageFromCVPixelBuffer(capturedImageBuffer, options: nil, imageOut: &cgImage)
+//            DispatchQueue.global(qos: .background).async {
+//                if let cg = cgImage {
+//                    NSLog("adding image")
+//
+//                    
+//                
+//                    let uiImage = UIImage(cgImage: cg)
+//                //lightDecoder.add(image: uiImage)
+//                    let croppedImage = uiImage.croppedImage(inRect: CGRect(x: uiImage.size.width/3, y: uiImage.size.height/3, width: uiImage.size.width/3, height: uiImage.size.height/3))
+//           
+//                    self.lightDecoder.add(image: croppedImage)
+//                    //uiImage.saveToFile(named: fileName)
+//                    
+//                    //croppedImage.saveToFile(named: fileName)
+//                }
+//            }
+        
+
+        
+        
+        
+        //        let image = UIImage(ciImage: coreImage)
+    
+        
+//        NSLog("imageWidth: \(imageWidth)")
+//        NSLog("imageHeight: \(imageHeight)")
+//        NSLog("bytes per row: \(bytesPerRow)")
+//
+//  //      lastFrame = frame
+//        if let point3d = targetPoint3d {
+//            let point2dV = sceneView.projectPoint(point3d)
+//            //NSLog("x: %f, y: %f, z: %f", point2dV.x, point2dV.y, point2dV.z)
+//            let point2dInView = CGPoint(x: CGFloat(point2dV.x), y: CGFloat(point2dV.y))
+//
+//            var currentDevice: UIDevice = UIDevice.current
+//            var orientation: UIDeviceOrientation = currentDevice.orientation
+//
+//
+//            if let image = cgImage {
+//
+//                let imageWidth = image.width
+//                let imageHeight = image.height
+//
+//                let pointInImage = CGPoint(x: point2dInView.x/sceneView.frame.size.width*CGFloat(imageWidth), y: point2dInView.y/sceneView.frame.size.height*CGFloat(imageHeight))
+//
+//                NSLog("cgImage width: \(image.width)")
+//                NSLog("cgImage height: \(image.height)")
+//
+//
+//
+//                let bytesPerPixel = 4
+//                let bytesPerRow = bytesPerPixel * imageWidth
+//                let bitsPerComponent = 8
+//
+//                let pixelSizeInBytes:Int = 4
+//                let pixels: UnsafeMutablePointer<UInt32> = calloc(imageHeight*imageWidth, pixelSizeInBytes).assumingMemoryBound(to: UInt32.self)
+//               // let pixels = UnsafeMutablePointer<UInt32>.allocate(capacity: height*width)
+//
+//                let colorSpace = CGColorSpaceCreateDeviceRGB()
+//                let context = CGContext(data: pixels, width: imageWidth, height: imageHeight, bitsPerComponent: bitsPerComponent, bytesPerRow: bytesPerRow, space: colorSpace, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)//kCGImageAlphaPremultipliedLast | kCGBitmapByteOrder32Big
+//
+//                context?.draw(image, in: CGRect(x: 0, y: 0, width: imageWidth, height: imageHeight))
+//                var pixel:UInt32 = 0
+//                if orientation == .portrait || orientation == .portraitUpsideDown {
+//                    pixel = pixels[Int(pointInImage.y*CGFloat(imageWidth))+Int(pointInImage.x)]
+//                } else {
+//                    pixel = pixels[Int(pointInImage.x*CGFloat(imageWidth))+Int(pointInImage.y)]
+//                }
+//                let red = (pixel >> 24) & 0xFF
+//                let green = (pixel >> 16) & 0xFF
+//                let blue = (pixel >> 8) & 0xFF
+//                let alpha = pixel & 0xFF
+//
+//                NSLog("red: \(red) green: \(green) blue: \(blue) alpha: \(alpha)")
+//
+//                free(pixels)
+//
+//            }
+//
+//            DispatchQueue.main.async {
+//                self.locationView.move(to: point2dInView)
+//            }
+//        }
     }
     
     
@@ -270,5 +449,49 @@ extension ViewController: ARSessionDelegate {
     }
     
 
+}
+
+
+
+extension UIImage {
+    func saveToFile(named fileName: String) {
+        let paths = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)
+        if let filePath = paths.first?.appendingPathComponent(fileName) {
+            // Save image.
+            do {
+                try self.pngData()?.write(to: filePath, options: .atomic)
+            }
+            catch {
+                // Handle the error
+            }
+        }
+    }
+    
+    
+    func croppedImage(inRect rect: CGRect) -> UIImage {
+        let rad: (Double) -> CGFloat = { deg in
+            return CGFloat(deg / 180.0 * .pi)
+        }
+        var rectTransform: CGAffineTransform
+        switch imageOrientation {
+        case .left:
+            let rotation = CGAffineTransform(rotationAngle: rad(90))
+            rectTransform = rotation.translatedBy(x: 0, y: -size.height)
+        case .right:
+            let rotation = CGAffineTransform(rotationAngle: rad(-90))
+            rectTransform = rotation.translatedBy(x: -size.width, y: 0)
+        case .down:
+            let rotation = CGAffineTransform(rotationAngle: rad(-180))
+            rectTransform = rotation.translatedBy(x: -size.width, y: -size.height)
+        default:
+            rectTransform = .identity
+        }
+        rectTransform = rectTransform.scaledBy(x: scale, y: scale)
+        let transformedRect = rect.applying(rectTransform)
+        let imageRef = cgImage!.cropping(to: transformedRect)!
+        let result = UIImage(cgImage: imageRef, scale: scale, orientation: imageOrientation)
+        return result
+    }
+    
 }
 
