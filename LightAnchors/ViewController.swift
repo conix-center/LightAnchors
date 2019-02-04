@@ -10,6 +10,8 @@ import UIKit
 import ARKit
 import VideoToolbox
 
+let kLightData = "LightData"
+
 class ViewController: UIViewController {
 
     let sceneView = ARSCNView()
@@ -29,6 +31,36 @@ class ViewController: UIViewController {
     var lightDecoder = LightDecoder()
     
     let fileNameDateFormatter = DateFormatter()
+    
+    let lightAnchorManager = LightAnchorManager()
+    
+    var capture = false
+    var blinkTimer: Timer?
+
+    
+    let settingsViewController = SettingsViewController()
+    
+    
+    /* UI Elements */
+    var numConnectionsLabel: UILabel = UILabel()
+    let lightDataLabel = UILabel()
+    let cameraConfigLabel = UILabel()
+    //    var detectLabel: UILabel = UILabel()
+    //    var lightAnchorLabel = UILabel()
+    let buttonStackView = UIStackView()
+    var captureButton: UIButton = UIButton()
+    let testButton = UIButton()
+    
+    /* json logging */
+    var captureId: Int = 0
+    var logDict: NSMutableDictionary?
+    var dataArray: NSMutableArray?
+    var dataPointDict: NSMutableDictionary?
+    
+    let dateFormatter = DateFormatter()
+    var timeStamp = Date()
+    
+    
     
     init () {
         super.init(nibName: nil, bundle: nil)
@@ -69,12 +101,68 @@ class ViewController: UIViewController {
         trackingStateLabel.rightAnchor.constraint(equalTo: view.rightAnchor).isActive = true
         trackingStateLabel.heightAnchor.constraint(equalToConstant: 50)
         
-        view.addSubview(colorView)
-        colorView.translatesAutoresizingMaskIntoConstraints = false
-        colorView.widthAnchor.constraint(equalTo: view.widthAnchor, multiplier: 0.25).isActive = true
-        colorView.heightAnchor.constraint(equalTo: view.widthAnchor, multiplier: 0.2).isActive = true
-        colorView.rightAnchor.constraint(equalTo: view.rightAnchor, constant: -20).isActive = true
-        colorView.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -30).isActive = true
+        
+        view.addSubview(numConnectionsLabel)
+        numConnectionsLabel.translatesAutoresizingMaskIntoConstraints = false
+        numConnectionsLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 10).isActive = true
+        numConnectionsLabel.topAnchor.constraint(equalTo: view.layoutMarginsGuide.topAnchor).isActive = true
+        numConnectionsLabel.heightAnchor.constraint(equalToConstant: 30).isActive = true
+        numConnectionsLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -10).isActive = true
+        
+        view.addSubview(lightDataLabel)
+        lightDataLabel.translatesAutoresizingMaskIntoConstraints = false
+        lightDataLabel.leadingAnchor.constraint(equalTo: numConnectionsLabel.leadingAnchor).isActive = true
+        lightDataLabel.topAnchor.constraint(equalTo: numConnectionsLabel.topAnchor).isActive = true
+        lightDataLabel.heightAnchor.constraint(equalTo: numConnectionsLabel.heightAnchor).isActive = true
+        lightDataLabel.trailingAnchor.constraint(equalTo: numConnectionsLabel.trailingAnchor).isActive = true
+        
+        lightDataLabel.textColor = UIColor.red
+        lightDataLabel.textAlignment = .right
+        
+        view.addSubview(cameraConfigLabel)
+        cameraConfigLabel.translatesAutoresizingMaskIntoConstraints = false
+        cameraConfigLabel.leadingAnchor.constraint(equalTo: numConnectionsLabel.leadingAnchor).isActive = true
+        cameraConfigLabel.topAnchor.constraint(equalTo: numConnectionsLabel.bottomAnchor).isActive = true
+        cameraConfigLabel.heightAnchor.constraint(equalTo: numConnectionsLabel.heightAnchor).isActive = true
+        cameraConfigLabel.trailingAnchor.constraint(equalTo: numConnectionsLabel.trailingAnchor).isActive = true
+        cameraConfigLabel.textColor = UIColor.red
+        
+        view.addSubview(buttonStackView)
+        buttonStackView.translatesAutoresizingMaskIntoConstraints = false
+        buttonStackView.leftAnchor.constraint(equalTo: view.leftAnchor, constant: 15).isActive = true
+        buttonStackView.rightAnchor.constraint(equalTo: view.rightAnchor, constant: -15).isActive = true
+        buttonStackView.bottomAnchor.constraint(equalTo: view.layoutMarginsGuide.bottomAnchor, constant: -30).isActive = true
+        buttonStackView.heightAnchor.constraint(equalTo: view.heightAnchor, multiplier: 0.08).isActive = true
+        
+        buttonStackView.addArrangedSubview(captureButton)
+        buttonStackView.addArrangedSubview(testButton)
+        buttonStackView.axis = .horizontal
+        buttonStackView.alignment = .center
+        buttonStackView.distribution = .equalSpacing
+        
+        captureButton.widthAnchor.constraint(equalTo: view.widthAnchor, multiplier: 0.4).isActive = true
+        captureButton.heightAnchor.constraint(equalTo: buttonStackView.heightAnchor).isActive = true
+        captureButton.setTitle("Capture", for: .normal)
+        captureButton.addTarget(self, action: #selector(startCapture(sender:)), for: .touchUpInside)
+        captureButton.backgroundColor = UIColor.blue
+        captureButton.layer.cornerRadius = 20
+        
+        testButton.widthAnchor.constraint(equalTo: view.widthAnchor, multiplier: 0.4).isActive = true
+        testButton.heightAnchor.constraint(equalTo: buttonStackView.heightAnchor).isActive = true
+        testButton.setTitle("Test", for: .normal)
+        testButton.addTarget(self, action: #selector(test(sender:)), for: .touchUpInside)
+        testButton.backgroundColor = UIColor.blue
+        testButton.layer.cornerRadius = 20
+        
+        numConnectionsLabel.textColor = UIColor.red
+        numConnectionsLabel.text = "# Connections: 0"
+        
+//        view.addSubview(colorView)
+//        colorView.translatesAutoresizingMaskIntoConstraints = false
+//        colorView.widthAnchor.constraint(equalTo: view.widthAnchor, multiplier: 0.25).isActive = true
+//        colorView.heightAnchor.constraint(equalTo: view.widthAnchor, multiplier: 0.2).isActive = true
+//        colorView.rightAnchor.constraint(equalTo: view.rightAnchor, constant: -20).isActive = true
+//        colorView.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -30).isActive = true
         
     }
     
@@ -99,9 +187,108 @@ class ViewController: UIViewController {
         trackingStateLabel.textColor = UIColor.red
         
         colorView.backgroundColor = UIColor.red
+        
+        lightAnchorManager.delegate = self
+        lightAnchorManager.scanForLightAnchors()
+        
+        dateFormatter.dateFormat = "yyyy-MM-dd-HH-mm-ss"
+        
+        navigationItem.rightBarButtonItem = UIBarButtonItem(title: "Settings", style: .plain, target: self, action: #selector(settings))
 
     }
 
+    
+    @objc func startCapture(sender:UIButton) {
+        if capture == false {
+            timeStamp = Date()
+            //startBle()
+            logDict = NSMutableDictionary()
+            dataArray = NSMutableArray()
+            logDict?.setValue(dataArray, forKey: "blinkdata")
+            captureId = UserDefaults.standard.integer(forKey: kCaptureId)
+            self.title = String(format: "Test #: %d", captureId)
+            logDict?.setValue(captureId, forKey: "captureid")
+            logDict?.setValue(timeStamp.timeIntervalSince1970, forKey: "starttime")
+            let iso = UserDefaults.standard.float(forKey: kIsoKey)
+            let exposure = UserDefaults.standard.integer(forKey: kExposureKey)
+            logDict?.setValue(iso, forKey: "iso")
+            logDict?.setValue(exposure, forKey: "exposure")
+            let whiteBalanceLock = UserDefaults.standard.bool(forKey: kWhiteBalanceLock)
+            logDict?.setValue(whiteBalanceLock, forKey: "wblock")
+            
+            blinkTimer = Timer.scheduledTimer(withTimeInterval: 1.5, repeats: true) { (timer) in
+                NSLog("Fire!")
+                var dataValue = 0
+                if UserDefaults.standard.bool(forKey: kGenerateRandomData) {
+                    dataValue = Int.random(in: 0..<0x3F)
+                } else {
+                    dataValue = UserDefaults.standard.integer(forKey: kLightData)
+                }
+                let dataString = String(format: "0x%x", dataValue)
+                self.dataPointDict = NSMutableDictionary()
+                if let dataPointDict = self.dataPointDict {
+                    dataPointDict.setValue(dataString, forKey: "value")
+                    dataPointDict.setValue(Date().timeIntervalSince1970, forKey: "time")
+                    dataPointDict.setValue(false, forKey: "error")
+                    self.dataArray?.add(dataPointDict)
+                }
+                NSLog("set data to: %@", dataString)
+                self.lightDataLabel.text = dataString
+                self.lightAnchorManager.startBlinking(with: dataValue)
+            }
+
+            capture = true
+        } else {
+            lightAnchorManager.stopBlinking()
+            do {
+                let jsonData = try JSONSerialization.data(withJSONObject: logDict, options: .prettyPrinted)
+                let jsonString = String(bytes: jsonData, encoding: .utf8)
+                if let string = jsonString {
+                    NSLog("json: %@", string)
+                } else {
+                    NSLog("no json")
+                }
+                let documentsPath = NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true)[0]
+                
+                
+                let dateString = dateFormatter.string(from: timeStamp)
+                let dataValue = UserDefaults.standard.integer(forKey: kLightData)
+                
+                let fileName = String(format: "%@_%d.json", dateString, captureId)
+                let filePath = String(format: "%@/%@", documentsPath, fileName)
+                NSLog("filePath: %@", filePath)
+                let url = URL(fileURLWithPath: filePath)
+                try jsonData.write(to: url)
+            } catch {
+                NSLog("error writing json file")
+            }
+            
+            lightDataLabel.text = ""
+            if let timer = blinkTimer {
+                timer.invalidate()
+            }
+            capture = false
+            captureId = UserDefaults.standard.integer(forKey: kCaptureId)+1
+            UserDefaults.standard.setValue(captureId, forKey: kCaptureId)
+            self.title = String(format: "Test #: %d", captureId)
+        }
+        updateCaptureButton()
+    }
+
+    
+    @objc func test(sender: UIButton) {
+        var dataValue = 0
+        if UserDefaults.standard.bool(forKey: kGenerateRandomData) {
+            dataValue = Int.random(in: 0..<0x3F)
+        } else {
+            dataValue = UserDefaults.standard.integer(forKey: kLightData)
+        }
+        let dataString = String(format: "0x%x", dataValue)
+        NSLog("set data to: %@", dataString)
+        lightDataLabel.text = dataString
+        lightAnchorManager.startBlinking(with: dataValue)
+    }
+    
     
     @objc func handleTap(gestureRecognizer: UITapGestureRecognizer) {
         NSLog("handleTap")
@@ -205,6 +392,18 @@ class ViewController: UIViewController {
         
     }
     
+    func updateCaptureButton() {
+        if capture == false {
+            captureButton.setTitle("Capture", for: .normal)
+        } else {
+            captureButton.setTitle("Stop", for: .normal)
+        }
+    }
+    
+    @objc func settings() {
+        navigationController?.pushViewController(settingsViewController, animated: true)
+    }
+    
 }
 
 
@@ -268,7 +467,9 @@ extension ViewController: ARSCNViewDelegate {
 
 extension ViewController: ARSessionDelegate {
     func session(_ session: ARSession, didUpdate frame: ARFrame) {
-        savePixelBuffer(frame.capturedImage)
+        if capture == true {
+            savePixelBuffer(frame.capturedImage)
+        }
             
             
 //            CVPixelBufferLockBaseAddress(frame.capturedImage, .readOnly)
@@ -449,6 +650,19 @@ extension ViewController: ARSessionDelegate {
     }
     
 
+}
+
+
+extension ViewController: LightAnchorManagerDelegate {
+    func lightAnchorManager(bleManager: LightAnchorManager, didDiscoverLightAnchorIdentifiedBy lightAnchorId: Int) {
+        numConnectionsLabel.text = String(format: "# Connections: %d", lightAnchorManager.lightAnchors.count)
+    }
+    
+    func lightAnchorManagerDidDisconnectFromLightAnchor(bleManager: LightAnchorManager) {
+        
+    }
+    
+    
 }
 
 
