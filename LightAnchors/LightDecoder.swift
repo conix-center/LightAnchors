@@ -117,6 +117,29 @@ class LightDecoder: NSObject {
     
     
     
+    func save(imageData: UnsafeRawPointer, length: Int) {
+        
+        let now = Date()
+        let dateString = fileNameDateFormatter.string(from: now)
+        let fileName = String(format: "%@.data", dateString)
+        
+        let data = Data(bytes: imageData, count: length)
+        
+        let paths = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)
+        if let filePath = paths.first?.appendingPathComponent(fileName) {
+            // Save image.
+            do {
+                try data.write(to: filePath, options: .atomic)
+            }
+            catch {
+                // Handle the error
+            }
+        }
+        
+    }
+    
+    
+    
     
     
 

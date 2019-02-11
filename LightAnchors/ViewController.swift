@@ -384,7 +384,8 @@ class ViewController: UIViewController {
 //                NSLog("frame.captureImage: \(buffer)\n\n")
 //                NSLog("baseAddress: \(baseAddressGray)")
                 let bufferData = Data(bytes: baseAddressGray, count: numGrayBytes)
-                self.lightDecoder.add(imageBytes: baseAddressGray, length: numGrayBytes)
+                //self.lightDecoder.add(imageBytes: baseAddressGray, length: numGrayBytes)
+                self.lightDecoder.save(imageData: baseAddressGray, length: numGrayBytes)
                     //self.lightDecoder.add(imageData: bufferData)
                 
 //                do {
