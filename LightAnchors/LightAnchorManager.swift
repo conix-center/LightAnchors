@@ -180,7 +180,7 @@ extension LightAnchorManager: CBPeripheralDelegate {
         if let value = characteristic.value {
             NSLog("wrote value: %@ for characteristic: %@",  value.hexEncodedString(), characteristic.uuid.uuidString)
         } else {
-            NSLog("characteristic has no value")
+     //       NSLog("characteristic has no value")
         }
         if let err = error {
             NSLog("error writing to characteristic: %@")

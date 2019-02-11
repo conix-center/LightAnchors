@@ -54,7 +54,8 @@ class ViewController: UIViewController {
     /* json logging */
     var captureId: Int = 0
     var logDict: NSMutableDictionary?
-    var dataArray: NSMutableArray?
+    var blinkDataArray: NSMutableArray?
+    var frameDataArray: NSMutableArray?
     var dataPointDict: NSMutableDictionary?
     
     let dateFormatter = DateFormatter()
@@ -199,12 +200,14 @@ class ViewController: UIViewController {
 
     
     @objc func startCapture(sender:UIButton) {
-        if capture == false {
+        if capture == false { // start
             timeStamp = Date()
             //startBle()
             logDict = NSMutableDictionary()
-            dataArray = NSMutableArray()
-            logDict?.setValue(dataArray, forKey: "blinkdata")
+            blinkDataArray = NSMutableArray()
+            frameDataArray = NSMutableArray()
+            logDict?.setValue(blinkDataArray, forKey: "blinkdata")
+            logDict?.setValue(frameDataArray, forKey: "framedata")
             captureId = UserDefaults.standard.integer(forKey: kCaptureId)
             self.title = String(format: "Test #: %d", captureId)
             logDict?.setValue(captureId, forKey: "captureid")
@@ -230,7 +233,7 @@ class ViewController: UIViewController {
                     dataPointDict.setValue(dataString, forKey: "value")
                     dataPointDict.setValue(Date().timeIntervalSince1970, forKey: "time")
                     dataPointDict.setValue(false, forKey: "error")
-                    self.dataArray?.add(dataPointDict)
+                    self.blinkDataArray?.add(dataPointDict)
                 }
                 NSLog("set data to: %@", dataString)
                 self.lightDataLabel.text = dataString
@@ -238,7 +241,7 @@ class ViewController: UIViewController {
             }
 
             capture = true
-        } else {
+        } else { // stop
             lightAnchorManager.stopBlinking()
             do {
                 let jsonData = try JSONSerialization.data(withJSONObject: logDict, options: .prettyPrinted)
@@ -358,7 +361,7 @@ class ViewController: UIViewController {
             let height = CVPixelBufferGetHeight(buffer)
             let bytesPerRow = CVPixelBufferGetBytesPerRow(buffer)
             
-            NSLog("pixelBuffer width: %d, height: %d, format: \(format), bytes per row: \(bytesPerRow) ", width, height)
+//            NSLog("pixelBuffer width: %d, height: %d, format: \(format), bytes per row: \(bytesPerRow) ", width, height)
             
             let grayPlaneHeight = 1920
             let grayPlaneWidth = 1440
@@ -376,16 +379,19 @@ class ViewController: UIViewController {
             
             CVPixelBufferLockBaseAddress(buffer, .readOnly)
             //let dataSize = CVPixelBufferGetDataSize(frame.capturedImage)
-            NSLog("dataSize: %d", numGrayBytes)
+//            NSLog("dataSize: %d", numGrayBytes)
             if let baseAddressGray = CVPixelBufferGetBaseAddressOfPlane(buffer, grayPlaneIndex) {
-                NSLog("frame.captureImage: \(buffer)\n\n")
-                NSLog("baseAddress: \(baseAddressGray)")
+//                NSLog("frame.captureImage: \(buffer)\n\n")
+//                NSLog("baseAddress: \(baseAddressGray)")
                 let bufferData = Data(bytes: baseAddressGray, count: numGrayBytes)
-                do {
-                    try bufferData.write(to: filePath)
-                } catch {
-                    NSLog("error writing to file")
-                }
+                self.lightDecoder.add(imageBytes: baseAddressGray, length: numGrayBytes)
+                    //self.lightDecoder.add(imageData: bufferData)
+                
+//                do {
+//                    try bufferData.write(to: filePath)
+//                } catch {
+//                    NSLog("error writing to file")
+//                }
             }
             CVPixelBufferUnlockBaseAddress(buffer, .readOnly)
         }
@@ -467,7 +473,24 @@ extension ViewController: ARSCNViewDelegate {
 
 extension ViewController: ARSessionDelegate {
     func session(_ session: ARSession, didUpdate frame: ARFrame) {
+        
+        
         if capture == true {
+            let currentTransform = frame.camera.transform
+            let x = currentTransform[3][0]
+            let y = currentTransform[3][1]
+            let z = currentTransform[3][2]
+            let pitch = frame.camera.eulerAngles[0]
+            let yaw = frame.camera.eulerAngles[1]
+            let roll = frame.camera.eulerAngles[2]
+            let frameDataDict = NSMutableDictionary()
+            frameDataDict.setValue(x, forKey: "x")
+            frameDataDict.setValue(y, forKey: "y")
+            frameDataDict.setValue(z, forKey: "z")
+            frameDataDict.setValue(pitch, forKey: "pitch")
+            frameDataDict.setValue(yaw, forKey: "yaw")
+            frameDataDict.setValue(roll, forKey: "roll")
+            frameDataArray?.add(frameDataDict)
             savePixelBuffer(frame.capturedImage)
         }
             
@@ -488,7 +511,7 @@ extension ViewController: ARSessionDelegate {
 //            CVPixelBufferUnlockBaseAddress(frame.capturedImage, .readOnly)
     //    }
       //  let ciImage = CIImage(cvPixelBuffer: frame.capturedImage)
-        NSLog("new frame")
+      //  NSLog("new frame")
 
 //        lightDecoder.add(coreImage: ciImage)
 //        if let capturedDepthDataBuffer: AVDepthData = frame.capturedDepthData {
