@@ -34,6 +34,7 @@ class LightDecoder: NSObject {
     
     //var imageDataArray: [Data] = []
     var imageBufferArray = [MTLBuffer]()
+    var processingImageBuffers = false
     
     var width = 1440
     
@@ -117,19 +118,59 @@ class LightDecoder: NSObject {
     
     
     
-    func save(imageData: UnsafeRawPointer, length: Int) {
+
+    class DataFile {
+        let data: Data
+        let fileName: String
         
+        init(data: Data, fileName: String) {
+            self.data = data
+            self.fileName = fileName
+        }
+    }
+    
+    var dataFileArray = [DataFile]()
+    var processingDataFiles = false
+    var savingFiles = false
+    var shouldSave = false
+    
+    func addToArrayForSaving(imageBytes: UnsafeRawPointer, length: Int) {
+        let data = Data(bytes: imageBytes, count: length)
         let now = Date()
         let dateString = fileNameDateFormatter.string(from: now)
         let fileName = String(format: "%@.data", dateString)
-        
-        let data = Data(bytes: imageData, count: length)
-        
+        let dataFile = DataFile(data: data, fileName: fileName)
+        if savingFiles == false {
+            if shouldSave == true {
+                dataFileArray.append(dataFile)
+            
+                if dataFileArray.count >= 90 {
+                    savingFiles = true
+                    DispatchQueue.global(qos: .userInitiated).async {
+                        
+                        for dataFile in self.dataFileArray {
+                            NSLog("Saving file")
+                            self.write(imageData: dataFile.data, to: dataFile.fileName)
+                        }
+                        self.dataFileArray.removeAll()
+                        self.savingFiles = false
+                        self.shouldSave = false
+                    }
+                }
+            }
+        } else {
+            shouldSave = false
+        }
+    }
+    
+    
+    
+    func write(imageData: Data, to fileName: String) {
         let paths = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)
         if let filePath = paths.first?.appendingPathComponent(fileName) {
             // Save image.
             do {
-                try data.write(to: filePath, options: .atomic)
+                try imageData.write(to: filePath, options: .atomic)
             }
             catch {
                 // Handle the error
@@ -138,17 +179,12 @@ class LightDecoder: NSObject {
         
     }
     
-    
-    
-    
-    
 
     
-    var previousImageBuffer: MTLBuffer?
+  
+   
     
     func add(imageBytes: UnsafeRawPointer, length: Int) {
-        
-        let startTime = Date().timeIntervalSince1970
         
         guard let device = self.device else {
             NSLog("no device")
@@ -159,11 +195,48 @@ class LightDecoder: NSObject {
             NSLog("Cannot create image buffer")
             return
         }
+        if processingImageBuffers == false {
+            imageBufferArray.append(imageBuffer)
         
-        guard let previousImageBuffer = self.previousImageBuffer else {
-            self.previousImageBuffer = imageBuffer
+            if imageBufferArray.count >= 90 {
+                processingImageBuffers = true
+                DispatchQueue.global(qos: .userInitiated).async {
+                    let startTime = Date().timeIntervalSince1970
+                    var prevBuffer = self.imageBufferArray[0]
+                    for bufferIndex in 1..<self.imageBufferArray.count {
+                        let buffer = self.imageBufferArray[bufferIndex]
+                        self.compare( buffer, to: prevBuffer)
+                        prevBuffer = buffer
+                    }
+                    self.imageBufferArray.removeAll()
+                    let endTime = Date().timeIntervalSince1970
+                    let runTime = endTime-startTime
+                    NSLog("run time: %lf", runTime)
+                    self.processingImageBuffers = false
+                }
+            }
+        }
+        
+        
+
+    }
+    
+    
+    func compare(_ imageBuffer: MTLBuffer, to prevImageBuffer: MTLBuffer) {
+
+        
+        guard let device = self.device else {
+            NSLog("no device")
             return
         }
+        
+
+        
+        if imageBuffer.length != prevImageBuffer.length {
+            NSLog("buffers do not match")
+            return
+        }
+        let length = imageBuffer.length
         
         guard let diffBuffer = device.makeBuffer(length: length, options: .storageModePrivate) else {
             NSLog("Cannot make result buffer")
@@ -189,7 +262,7 @@ class LightDecoder: NSObject {
             NSLog("Cannot make difference function")
             return
         }
-
+        
         guard let differenceComputeCommandEncoder = commandBuffer.makeComputeCommandEncoder() else {
             NSLog("Cannot make compute command encoder")
             return
@@ -210,7 +283,7 @@ class LightDecoder: NSObject {
             return
         }
         
-        differenceComputeCommandEncoder.setBuffer(previousImageBuffer, offset: 0, index: 0)
+        differenceComputeCommandEncoder.setBuffer(prevImageBuffer, offset: 0, index: 0)
         differenceComputeCommandEncoder.setBuffer(imageBuffer, offset: 0, index: 1)
         differenceComputeCommandEncoder.setBuffer(diffBuffer, offset: 0, index: 2)
         differenceComputeCommandEncoder.setComputePipelineState(differencePipelineState)
@@ -299,10 +372,8 @@ class LightDecoder: NSObject {
         
         NSLog("max value: %d at index: %d", maxValue, maxIndex)
         
-        self.previousImageBuffer = imageBuffer
-        let endTime = Date().timeIntervalSince1970
-        let runTime = endTime-startTime
-        NSLog("run time: %lf", runTime)
+
+
     }
     
     

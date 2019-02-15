@@ -9,6 +9,7 @@
 import UIKit
 import ARKit
 import VideoToolbox
+import CoreMotion
 
 let kLightData = "LightData"
 
@@ -56,11 +57,16 @@ class ViewController: UIViewController {
     var logDict: NSMutableDictionary?
     var blinkDataArray: NSMutableArray?
     var frameDataArray: NSMutableArray?
+    var motionDataArray: NSMutableArray?
     var dataPointDict: NSMutableDictionary?
     
     let dateFormatter = DateFormatter()
     var timeStamp = Date()
     
+    let frameRateLabel = UILabel()
+    var frameCount = 0;
+    
+    let motionManager = CMMotionManager()
     
     
     init () {
@@ -128,6 +134,13 @@ class ViewController: UIViewController {
         cameraConfigLabel.trailingAnchor.constraint(equalTo: numConnectionsLabel.trailingAnchor).isActive = true
         cameraConfigLabel.textColor = UIColor.red
         
+        view.addSubview(frameRateLabel)
+        frameRateLabel.translatesAutoresizingMaskIntoConstraints = false
+        frameRateLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 10).isActive = true
+        frameRateLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor).isActive = true
+        frameRateLabel.topAnchor.constraint(equalTo: cameraConfigLabel.bottomAnchor).isActive = true
+        frameRateLabel.heightAnchor.constraint(equalTo: numConnectionsLabel.heightAnchor).isActive = true
+        
         view.addSubview(buttonStackView)
         buttonStackView.translatesAutoresizingMaskIntoConstraints = false
         buttonStackView.leftAnchor.constraint(equalTo: view.leftAnchor, constant: 15).isActive = true
@@ -165,6 +178,12 @@ class ViewController: UIViewController {
 //        colorView.rightAnchor.constraint(equalTo: view.rightAnchor, constant: -20).isActive = true
 //        colorView.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -30).isActive = true
         
+        let timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { (timer) in
+            NSLog("number of frames: \(self.frameCount)")
+            self.frameRateLabel.text = "\(self.frameCount) fps"
+            self.frameCount = 0
+        }
+        
     }
     
     override func viewDidLoad() {
@@ -175,6 +194,9 @@ class ViewController: UIViewController {
         
         let configuration = ARWorldTrackingConfiguration()
         configuration.isLightEstimationEnabled = true
+        for format in ARWorldTrackingConfiguration.supportedVideoFormats {
+            NSLog("format: \(format)")
+        }
         
         configuration.planeDetection = .horizontal//[.horizontal, .vertical]
         configuration.worldAlignment = /*.gravity*/.gravityAndHeading//based on compass
@@ -195,6 +217,10 @@ class ViewController: UIViewController {
         dateFormatter.dateFormat = "yyyy-MM-dd-HH-mm-ss"
         
         navigationItem.rightBarButtonItem = UIBarButtonItem(title: "Settings", style: .plain, target: self, action: #selector(settings))
+        
+        frameRateLabel.textColor = UIColor.red
+        
+
 
     }
 
@@ -206,8 +232,10 @@ class ViewController: UIViewController {
             logDict = NSMutableDictionary()
             blinkDataArray = NSMutableArray()
             frameDataArray = NSMutableArray()
+            motionDataArray = NSMutableArray()
             logDict?.setValue(blinkDataArray, forKey: "blinkdata")
             logDict?.setValue(frameDataArray, forKey: "framedata")
+            logDict?.setValue(motionDataArray, forKey: "motiondata")
             captureId = UserDefaults.standard.integer(forKey: kCaptureId)
             self.title = String(format: "Test #: %d", captureId)
             logDict?.setValue(captureId, forKey: "captureid")
@@ -235,6 +263,7 @@ class ViewController: UIViewController {
                     dataPointDict.setValue(false, forKey: "error")
                     self.blinkDataArray?.add(dataPointDict)
                 }
+                self.lightDecoder.shouldSave = true
                 NSLog("set data to: %@", dataString)
                 self.lightDataLabel.text = dataString
                 self.lightAnchorManager.startBlinking(with: dataValue)
@@ -383,10 +412,11 @@ class ViewController: UIViewController {
             if let baseAddressGray = CVPixelBufferGetBaseAddressOfPlane(buffer, grayPlaneIndex) {
 //                NSLog("frame.captureImage: \(buffer)\n\n")
 //                NSLog("baseAddress: \(baseAddressGray)")
-                let bufferData = Data(bytes: baseAddressGray, count: numGrayBytes)
+          //      let bufferData = Data(bytes: baseAddressGray, count: numGrayBytes)
                 //self.lightDecoder.add(imageBytes: baseAddressGray, length: numGrayBytes)
-                self.lightDecoder.save(imageData: baseAddressGray, length: numGrayBytes)
-                    //self.lightDecoder.add(imageData: bufferData)
+                //self.lightDecoder.save(imageData: baseAddressGray, length: numGrayBytes)
+              // self.lightDecoder.add(imageData: bufferData)
+                self.lightDecoder.addToArrayForSaving(imageBytes: baseAddressGray, length: numGrayBytes)
                 
 //                do {
 //                    try bufferData.write(to: filePath)
@@ -492,8 +522,25 @@ extension ViewController: ARSessionDelegate {
             frameDataDict.setValue(yaw, forKey: "yaw")
             frameDataDict.setValue(roll, forKey: "roll")
             frameDataArray?.add(frameDataDict)
+            let xMotion = motionManager.deviceMotion?.userAcceleration.x
+            let yMotion = motionManager.deviceMotion?.userAcceleration.y
+            let zMotion = motionManager.deviceMotion?.userAcceleration.z
+            let xRot = motionManager.deviceMotion?.rotationRate.x
+            let yRot = motionManager.deviceMotion?.rotationRate.y
+            let zRot = motionManager.deviceMotion?.rotationRate.z
+            let motionDataDict = NSMutableDictionary()
+            motionDataDict.setValue(xMotion, forKey: "xAcc")
+            motionDataDict.setValue(yMotion, forKey: "yAcc")
+            motionDataDict.setValue(zMotion, forKey: "zAcc")
+            motionDataDict.setValue(xRot, forKey: "xRot")
+            motionDataDict.setValue(yRot, forKey: "yRot")
+            motionDataDict.setValue(zRot, forKey: "zRot")
+            motionDataArray?.add(motionDataDict)
+            
             savePixelBuffer(frame.capturedImage)
         }
+        
+        frameCount += 1
             
             
 //            CVPixelBufferLockBaseAddress(frame.capturedImage, .readOnly)
@@ -732,4 +779,6 @@ extension UIImage {
     }
     
 }
+
+
 
