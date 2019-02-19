@@ -11,6 +11,23 @@
 //#include <metal_integer>
 using namespace metal;
 
+constant char threshold [[ function_constant(0) ]];
+constant char preamble [[ function_constant(1) ]];
+
+kernel void matchPreamble(
+                          const device char4 *image [[ buffer(0) ]],
+                          device char4 *historyBuffer [[ buffer(1) ]],
+                          device char4 *matchBuffer [[ buffer(2) ]],
+                          uint id [[ thread_position_in_grid ]]
+                          ) {
+    bool4 binaryPixel = image[id] > threshold;
+    char4 history = historyBuffer[id];
+    history = (history << 1) | (char4)binaryPixel;
+    //matchBuffer[id] = (history ^ preamble);
+    matchBuffer[id] = (char4)(((history ^ preamble) == 0) || (bool4)matchBuffer[id]);
+    
+    
+}
 
 
 kernel void difference(const device char4 *imageA [[ buffer(0) ]],

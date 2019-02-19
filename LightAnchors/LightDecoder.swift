@@ -42,6 +42,10 @@ class LightDecoder: NSObject {
     var library:MTLLibrary?
     var commandQueue:MTLCommandQueue?
     
+    var differenceFunction:MTLFunction?
+    var maxFunction: MTLFunction?
+    var matchPreambleFunction: MTLFunction?
+    
     override init() {
         super.init()
         NSLog("LightDecoder init")
@@ -70,8 +74,13 @@ class LightDecoder: NSObject {
             NSLog("Cannot find library path")
             if let device = self.device {
            
-                library = device.makeDefaultLibrary()
-   
+                self.library = device.makeDefaultLibrary()
+                if let library = self.library {
+                    self.differenceFunction = library.makeFunction(name: "difference")
+                    self.maxFunction = library.makeFunction(name: "max")
+                   // setupMatchPreamble()
+                }
+                
             }
         }
         if let device = self.device {
@@ -253,12 +262,12 @@ class LightDecoder: NSObject {
             return
         }
         
-        guard let library = self.library else {
-            NSLog("No library")
-            return
-        }
+//        guard let library = self.library else {
+//            NSLog("No library")
+//            return
+//        }
         
-        guard let differenceFunction = library.makeFunction(name: "difference") else {
+        guard let differenceFunction = self.differenceFunction else {
             NSLog("Cannot make difference function")
             return
         }
@@ -313,7 +322,7 @@ class LightDecoder: NSObject {
             return
         }
         
-        guard let maxFunction = library.makeFunction(name: "max") else {
+        guard let maxFunction = self.maxFunction else {
             NSLog("Cannot make max function")
             return
         }
@@ -377,6 +386,187 @@ class LightDecoder: NSObject {
     }
     
     
+    var matchPreambleInitialized = false
+    var evenFrame = false
+    
+    func decode(imageBytes: UnsafeRawPointer, length: Int) {
+        let start = Date().timeIntervalSince1970
+        if matchPreambleInitialized == false {
+            setupMatchPreamble()
+            matchPreambleInitialized = true
+        }
+        guard let device = self.device else {
+            NSLog("no device")
+            return
+        }
+        guard let imageBuffer = device.makeBuffer(bytes: imageBytes, length: length, options: .storageModeShared) else {
+            NSLog("Can't create image buffer")
+            return
+        }
+        matchPreamble(imageBuffer: imageBuffer)
+        let end = Date().timeIntervalSince1970
+        NSLog("decode runtime: %f", end-start)
+        
+        evenFrame = !evenFrame
+    }
+    
+    
+    var historyBufferOdd: MTLBuffer?
+    var matchBufferOdd: MTLBuffer?
+    var historyBufferEven: MTLBuffer?
+    var matchBufferEven: MTLBuffer?
+    var bufferLength = 0
+    
+    func setupMatchPreamble() {
+        guard let library = self.library else {
+            NSLog("no library")
+            return
+        }
+        var threshold = 80
+        var preamble = 0x2A
+        
+        let constantValues = MTLFunctionConstantValues()
+        constantValues.setConstantValue(&threshold, type: .char, index: 0)
+        constantValues.setConstantValue(&preamble, type: .char, index: 1)
+        do {
+            matchPreambleFunction = try library.makeFunction(name: "matchPreamble", constantValues: constantValues)
+        } catch {
+            NSLog("Error creating match preamble function")
+        }
+        
+        bufferLength = 1920*1440
+        historyBufferOdd = device?.makeBuffer(length: bufferLength, options: .storageModePrivate)
+        matchBufferOdd = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
+        
+        historyBufferEven = device?.makeBuffer(length: bufferLength, options: .storageModePrivate)
+        matchBufferEven = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
+        
+        
+    }
+    
+    
+    func matchPreamble(imageBuffer: MTLBuffer) {
+        guard let device = self.device else {
+            NSLog("no device")
+            return
+        }
+        
+        var hBuffer: MTLBuffer?
+        var mBuffer: MTLBuffer?
+        if evenFrame != true {
+            hBuffer = self.historyBufferOdd
+            mBuffer = self.matchBufferOdd
+        } else {
+            hBuffer = self.historyBufferEven
+            mBuffer = self.matchBufferEven
+        }
+        
+        guard let historyBuffer = hBuffer else {
+            NSLog("no history buffer")
+            return
+        }
+        
+        guard let matchBuffer = mBuffer else {
+            NSLog("no match buffer")
+            return
+        }
+        
+        if imageBuffer.length != historyBuffer.length || imageBuffer.length != matchBuffer.length {
+            NSLog("buffers do not match")
+            return
+        }
+        let length = imageBuffer.length
+        
+        
+        guard let commandQueue = self.commandQueue else {
+            NSLog("No command queue")
+            return
+        }
+        
+        guard let commandBuffer = commandQueue.makeCommandBuffer() else {
+            NSLog("Cannot make command buffer")
+            return
+        }
+        
+        guard let matchPreambleFunction = self.matchPreambleFunction else {
+            NSLog("Cannot make difference function")
+            return
+        }
+        
+        guard let computeCommandEncoder = commandBuffer.makeComputeCommandEncoder() else {
+            NSLog("Cannot make compute command encoder")
+            return
+        }
+        
+        var computePipelineState: MTLComputePipelineState?
+        do {
+            computePipelineState = try device.makeComputePipelineState(function: matchPreambleFunction)
+        } catch {
+            NSLog("Error making compute pipeline state")
+            computeCommandEncoder.endEncoding()
+            return
+        }
+        
+        guard let pipelineState = computePipelineState else {
+            NSLog("No compute pipeline state")
+            computeCommandEncoder.endEncoding()
+            return
+        }
+        
+        computeCommandEncoder.setBuffer(imageBuffer, offset: 0, index: 0)
+        computeCommandEncoder.setBuffer(historyBuffer, offset: 0, index: 1)
+        computeCommandEncoder.setBuffer(matchBuffer, offset: 0, index: 2)
+        computeCommandEncoder.setComputePipelineState(pipelineState)
+        
+        let threadExecutionWidth = pipelineState.threadExecutionWidth
+        NSLog("threadExecutionWidth: %d", threadExecutionWidth)
+        let threadsPerGroup = MTLSize(width: threadExecutionWidth, height: 1, depth: 1)
+        
+        let numThreadGroups = MTLSize(width: /*1*/(length/4/*+threadExecutionWidth*/)/threadExecutionWidth, height: 1, depth: 1)
+        computeCommandEncoder.dispatchThreadgroups(numThreadGroups, threadsPerThreadgroup: threadsPerGroup)
+        computeCommandEncoder.endEncoding()
+        
+        commandBuffer.commit()
+        commandBuffer.waitUntilCompleted()
+        NSLog("preamble match complete")
+    }
+    
+    
+    func countFoundPreambleBits() {
+        guard let matchBufferOdd = self.matchBufferOdd else {
+            NSLog("no match buffer")
+            return
+        }
+        let matchArrayOdd = matchBufferOdd.contents().assumingMemoryBound(to: UInt8.self)
+        var numberOfMatchesOdd = 0
+        for i in 0..<bufferLength {
+            if matchArrayOdd[i] == 0 {// zero is a match
+                numberOfMatchesOdd += 1
+            }
+        }
+//        for i in 0..<100 {
+//            NSLog("0x%x", matchArray[i])
+//        }
+        NSLog("number of matches odd: %d", numberOfMatchesOdd)
+        
+        
+        
+        guard let matchBufferEven = self.matchBufferEven else {
+            NSLog("no match buffer")
+            return
+        }
+        let matchArrayEven = matchBufferEven.contents().assumingMemoryBound(to: UInt8.self)
+        var numberOfMatchesEven = 0
+        for i in 0..<bufferLength {
+            if matchArrayEven[i] == 0 {// zero is a match
+                numberOfMatchesEven += 1
+            }
+        }
+//        for i in 0..<100 {
+//            NSLog("0x%x", matchArrayEv[i])
+//        }
+        NSLog("number of matches even: %d", numberOfMatchesEven)
+    }
     
     
     

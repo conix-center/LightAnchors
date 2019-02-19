@@ -221,7 +221,7 @@ class ViewController: UIViewController {
         frameRateLabel.textColor = UIColor.red
         
 
-
+        lightDecoder.countFoundPreambleBits()
     }
 
     
@@ -303,6 +303,8 @@ class ViewController: UIViewController {
             captureId = UserDefaults.standard.integer(forKey: kCaptureId)+1
             UserDefaults.standard.setValue(captureId, forKey: kCaptureId)
             self.title = String(format: "Test #: %d", captureId)
+            
+            lightDecoder.countFoundPreambleBits()
         }
         updateCaptureButton()
     }
@@ -416,8 +418,8 @@ class ViewController: UIViewController {
                 //self.lightDecoder.add(imageBytes: baseAddressGray, length: numGrayBytes)
                 //self.lightDecoder.save(imageData: baseAddressGray, length: numGrayBytes)
               // self.lightDecoder.add(imageData: bufferData)
-                self.lightDecoder.addToArrayForSaving(imageBytes: baseAddressGray, length: numGrayBytes)
-                
+                //self.lightDecoder.addToArrayForSaving(imageBytes: baseAddressGray, length: numGrayBytes)
+                self.lightDecoder.decode(imageBytes: baseAddressGray, length: numGrayBytes)
 //                do {
 //                    try bufferData.write(to: filePath)
 //                } catch {
@@ -521,6 +523,7 @@ extension ViewController: ARSessionDelegate {
             frameDataDict.setValue(pitch, forKey: "pitch")
             frameDataDict.setValue(yaw, forKey: "yaw")
             frameDataDict.setValue(roll, forKey: "roll")
+            frameDataDict.setValue(Date().timeIntervalSince1970, forKey: "time")
             frameDataArray?.add(frameDataDict)
             let xMotion = motionManager.deviceMotion?.userAcceleration.x
             let yMotion = motionManager.deviceMotion?.userAcceleration.y
@@ -535,6 +538,7 @@ extension ViewController: ARSessionDelegate {
             motionDataDict.setValue(xRot, forKey: "xRot")
             motionDataDict.setValue(yRot, forKey: "yRot")
             motionDataDict.setValue(zRot, forKey: "zRot")
+            motionDataDict.setValue(Date().timeIntervalSince1970, forKey: "time")
             motionDataArray?.add(motionDataDict)
             
             savePixelBuffer(frame.capturedImage)
