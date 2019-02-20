@@ -179,7 +179,7 @@ class ViewController: UIViewController {
 //        colorView.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -30).isActive = true
         
         let timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { (timer) in
-            NSLog("number of frames: \(self.frameCount)")
+            //NSLog("number of frames: \(self.frameCount)")
             self.frameRateLabel.text = "\(self.frameCount) fps"
             self.frameCount = 0
         }

@@ -417,6 +417,9 @@ class LightDecoder: NSObject {
     var matchBufferEven: MTLBuffer?
     var bufferLength = 0
     
+    var minBuffer: MTLBuffer?
+    var maxBuffer: MTLBuffer?
+    
     func setupMatchPreamble() {
         guard let library = self.library else {
             NSLog("no library")
@@ -440,6 +443,15 @@ class LightDecoder: NSObject {
         
         historyBufferEven = device?.makeBuffer(length: bufferLength, options: .storageModePrivate)
         matchBufferEven = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
+        
+        self.minBuffer = device?.makeBuffer(length: bufferLength, options:.storageModeShared)
+        if let minBuffer = self.minBuffer {
+            let minArray = minBuffer.contents().assumingMemoryBound(to: UInt8.self)
+            for i in 0..<bufferLength {
+                minArray[i] = 0xFF;
+            }
+        }
+        self.maxBuffer = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
         
         
     }
@@ -516,6 +528,8 @@ class LightDecoder: NSObject {
         computeCommandEncoder.setBuffer(imageBuffer, offset: 0, index: 0)
         computeCommandEncoder.setBuffer(historyBuffer, offset: 0, index: 1)
         computeCommandEncoder.setBuffer(matchBuffer, offset: 0, index: 2)
+        computeCommandEncoder.setBuffer(minBuffer, offset: 0, index: 3)
+        computeCommandEncoder.setBuffer(maxBuffer, offset: 0, index: 4)
         computeCommandEncoder.setComputePipelineState(pipelineState)
         
         let threadExecutionWidth = pipelineState.threadExecutionWidth
@@ -540,12 +554,12 @@ class LightDecoder: NSObject {
         let matchArrayOdd = matchBufferOdd.contents().assumingMemoryBound(to: UInt8.self)
         var numberOfMatchesOdd = 0
         for i in 0..<bufferLength {
-            if matchArrayOdd[i] == 0 {// zero is a match
+            if matchArrayOdd[i] == 1 {
                 numberOfMatchesOdd += 1
             }
         }
 //        for i in 0..<100 {
-//            NSLog("0x%x", matchArray[i])
+//            NSLog("his odd 0x%x", matchArrayOdd[i])
 //        }
         NSLog("number of matches odd: %d", numberOfMatchesOdd)
         
@@ -558,12 +572,20 @@ class LightDecoder: NSObject {
         let matchArrayEven = matchBufferEven.contents().assumingMemoryBound(to: UInt8.self)
         var numberOfMatchesEven = 0
         for i in 0..<bufferLength {
-            if matchArrayEven[i] == 0 {// zero is a match
+            if matchArrayEven[i] == 1 {
                 numberOfMatchesEven += 1
             }
         }
+        if let maxArray = self.maxBuffer?.contents().assumingMemoryBound(to: UInt8.self), let minArray = self.minBuffer?.contents().assumingMemoryBound(to: UInt8.self) {
+            for i in 0..<100 {
+                NSLog("max: %d", maxArray[i])
+            }
+            for i in 0..<100 {
+                NSLog("min: %d", minArray[i])
+            }
+        }
 //        for i in 0..<100 {
-//            NSLog("0x%x", matchArrayEv[i])
+//            NSLog("his even 0x%x", matchArrayEven[i])
 //        }
         NSLog("number of matches even: %d", numberOfMatchesEven)
     }

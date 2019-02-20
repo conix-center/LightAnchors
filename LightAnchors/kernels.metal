@@ -15,17 +15,24 @@ constant char threshold [[ function_constant(0) ]];
 constant char preamble [[ function_constant(1) ]];
 
 kernel void matchPreamble(
-                          const device char4 *image [[ buffer(0) ]],
-                          device char4 *historyBuffer [[ buffer(1) ]],
-                          device char4 *matchBuffer [[ buffer(2) ]],
+                          const device uchar4 *image [[ buffer(0) ]],
+                          device uchar4 *historyBuffer [[ buffer(1) ]],
+                          device uchar4 *matchBuffer [[ buffer(2) ]],
+                          device uchar4 *minBuffer [[ buffer(3) ]],
+                          device uchar4 *maxBuffer [[ buffer(4) ]],
                           uint id [[ thread_position_in_grid ]]
                           ) {
-    bool4 binaryPixel = image[id] > threshold;
-    char4 history = historyBuffer[id];
-    history = (history << 1) | (char4)binaryPixel;
-    //matchBuffer[id] = (history ^ preamble);
-    matchBuffer[id] = (char4)(((history ^ preamble) == 0) || (bool4)matchBuffer[id]);
+    minBuffer[id] = min(minBuffer[id], image[id]);
+    maxBuffer[id] = max(maxBuffer[id], image[id]);
+    uchar4 thresh = (maxBuffer[id] - minBuffer[id]) / 2;
     
+    bool4 binaryPixel = image[id] > thresh;
+    uchar4 history = historyBuffer[id];
+    history = (history << 1) | (uchar4)binaryPixel;
+    historyBuffer[id] = history;
+    //matchBuffer[id] = (history ^ preamble);
+    matchBuffer[id] = (uchar4)(((history ^ preamble) == 0) || (bool4)matchBuffer[id]);
+ //   matchBuffer[id] = history;
     
 }
 
