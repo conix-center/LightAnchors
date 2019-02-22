@@ -37,6 +37,8 @@ class ViewController: UIViewController {
     
     var capture = false
     var blinkTimer: Timer?
+    
+    var frameCounter: Int = 0
 
     
     let settingsViewController = SettingsViewController()
@@ -198,14 +200,14 @@ class ViewController: UIViewController {
             NSLog("format: \(format)")
         }
         
-        configuration.planeDetection = .horizontal//[.horizontal, .vertical]
-        configuration.worldAlignment = /*.gravity*/.gravityAndHeading//based on compass
+//        configuration.planeDetection = .horizontal//[.horizontal, .vertical]
+//        configuration.worldAlignment = /*.gravity*/.gravityAndHeading//based on compass
         sceneView.debugOptions = [.showWorldOrigin, .showFeaturePoints/*.showWireframe*/]
         // Run the view's session
         sceneView.session.run(configuration)
         
-        let sphere = createSphere(at: SCNVector3(x: 0, y: 0, z: 1), color: UIColor.yellow)
-        scene.rootNode.addChildNode(sphere)
+//        let sphere = createSphere(at: SCNVector3(x: 0, y: 0, z: 1), color: UIColor.yellow)
+//        scene.rootNode.addChildNode(sphere)
         
         trackingStateLabel.textColor = UIColor.red
         
@@ -225,7 +227,7 @@ class ViewController: UIViewController {
     }
 
     
-    @objc func startCapture(sender:UIButton) {
+    @objc func startCapture(sender:Any) {
         if capture == false { // start
             timeStamp = Date()
             //startBle()
@@ -263,13 +265,15 @@ class ViewController: UIViewController {
                     dataPointDict.setValue(false, forKey: "error")
                     self.blinkDataArray?.add(dataPointDict)
                 }
-                self.lightDecoder.shouldSave = true
                 NSLog("set data to: %@", dataString)
                 self.lightDataLabel.text = dataString
                 self.lightAnchorManager.startBlinking(with: dataValue)
             }
-
+            
+            frameCounter = 0
+            self.lightDecoder.setCaptureId(captureId: captureId)
             capture = true
+            
         } else { // stop
             lightAnchorManager.stopBlinking()
             do {
@@ -304,7 +308,9 @@ class ViewController: UIViewController {
             UserDefaults.standard.setValue(captureId, forKey: kCaptureId)
             self.title = String(format: "Test #: %d", captureId)
             
-            lightDecoder.countFoundPreambleBits()
+            frameCounter = 0
+            
+//            lightDecoder.countFoundPreambleBits()
         }
         updateCaptureButton()
     }
@@ -342,41 +348,11 @@ class ViewController: UIViewController {
                 let z = result.worldTransform.columns.3.z//transform.m43
                 targetPoint3d = SCNVector3(x: x, y: y, z: z)
                 NSLog("targetPoint3d x: \(x), y: \(y), z: \(z)")
-                if let location = targetPoint3d {
-                    sphereNode.removeFromParentNode()
-                    sphereNode = createSphere(at: location, color: UIColor.green)
-                    scene.rootNode.addChildNode(sphereNode)
-                }
             }
  //       }
         
         
         
-    }
-    
-    
-    
-    func createSphere(at location: SCNVector3, color: UIColor) -> SCNNode{
-        let sphereGeometry = SCNSphere(radius: 0.03)
-        let sphereMaterial = SCNMaterial()
-        sphereMaterial.diffuse.contents = color.cgColor
-        sphereMaterial.locksAmbientWithDiffuse = true
-        sphereGeometry.materials = [sphereMaterial]
-        let sphereNode = SCNNode(geometry: sphereGeometry)
-        sphereNode.position = location
-        return sphereNode
-    }
-
-    func addPlane(node: SCNNode, anchor: ARPlaneAnchor) {
-        let plane = Plane(anchor)
-        planes[anchor] = plane
-        node.addChildNode(plane)
-    }
-    
-    func updatePlane(anchor: ARPlaneAnchor) {
-        if let plane = planes[anchor] {
-            plane.update(anchor)
-        }
     }
     
     
@@ -415,11 +391,11 @@ class ViewController: UIViewController {
 //                NSLog("frame.captureImage: \(buffer)\n\n")
 //                NSLog("baseAddress: \(baseAddressGray)")
           //      let bufferData = Data(bytes: baseAddressGray, count: numGrayBytes)
-                //self.lightDecoder.add(imageBytes: baseAddressGray, length: numGrayBytes)
+//                self.lightDecoder.add(imageBytes: baseAddressGray, length: numGrayBytes)
                 //self.lightDecoder.save(imageData: baseAddressGray, length: numGrayBytes)
               // self.lightDecoder.add(imageData: bufferData)
-                //self.lightDecoder.addToArrayForSaving(imageBytes: baseAddressGray, length: numGrayBytes)
-                self.lightDecoder.decode(imageBytes: baseAddressGray, length: numGrayBytes)
+                self.lightDecoder.addToArrayForSaving(imageBytes: baseAddressGray, length: numGrayBytes)
+//                self.lightDecoder.decode(imageBytes: baseAddressGray, length: numGrayBytes)
 //                do {
 //                    try bufferData.write(to: filePath)
 //                } catch {
@@ -434,8 +410,10 @@ class ViewController: UIViewController {
     func updateCaptureButton() {
         if capture == false {
             captureButton.setTitle("Capture", for: .normal)
+            captureButton.isEnabled = true
         } else {
-            captureButton.setTitle("Stop", for: .normal)
+            captureButton.setTitle("Capturing", for: .normal)
+            captureButton.isEnabled = false
         }
     }
     
@@ -444,9 +422,6 @@ class ViewController: UIViewController {
     }
     
 }
-
-
-
 
 extension ViewController: ARSCNViewDelegate {
     func session(_ session: ARSession, didFailWithError error: Error) {
@@ -469,11 +444,7 @@ extension ViewController: ARSCNViewDelegate {
      new AR anchor has been added to the scene.
      */
     func renderer(_ renderer: SCNSceneRenderer, didAdd node: SCNNode, for anchor: ARAnchor) {
-        DispatchQueue.main.async {
-            if let planeAnchor = anchor as? ARPlaneAnchor {
-                self.addPlane(node: node, anchor: planeAnchor)
-            }
-        }
+
     }
 
     
@@ -484,9 +455,6 @@ extension ViewController: ARSCNViewDelegate {
      */
     func renderer(_ renderer: SCNSceneRenderer,
                   didUpdate node: SCNNode, for anchor: ARAnchor) {
-        if let planeAnchor = anchor as? ARPlaneAnchor {
-            updatePlane(anchor: planeAnchor)
-        }
     }
     
     /*
@@ -495,20 +463,22 @@ extension ViewController: ARSCNViewDelegate {
      */
     func renderer(_ renderer: SCNSceneRenderer,
                   didRemove node: SCNNode, for anchor: ARAnchor) {
-        // ...
     }
     
     
     
 }
 
-
-
 extension ViewController: ARSessionDelegate {
     func session(_ session: ARSession, didUpdate frame: ARFrame) {
         
+        if capture == true && frameCounter >= 90 {
+            // if we've captured enough frames, stop capturing
+            startCapture(sender: self)
+        }
         
         if capture == true {
+            
             let currentTransform = frame.camera.transform
             let x = currentTransform[3][0]
             let y = currentTransform[3][1]
@@ -542,6 +512,7 @@ extension ViewController: ARSessionDelegate {
             motionDataArray?.add(motionDataDict)
             
             savePixelBuffer(frame.capturedImage)
+            frameCounter += 1
         }
         
         frameCount += 1

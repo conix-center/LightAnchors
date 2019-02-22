@@ -36,6 +36,9 @@ class LightDecoder: NSObject {
     var imageBufferArray = [MTLBuffer]()
     var processingImageBuffers = false
     
+    let dir: URL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).last! as URL
+    var captureId: Int = 0
+    
     var width = 1440
     
     var device:MTLDevice?
@@ -49,9 +52,12 @@ class LightDecoder: NSObject {
     override init() {
         super.init()
         NSLog("LightDecoder init")
-        fileNameDateFormatter.dateFormat = "yyyy-MM-dd-HH-mm-ss-SSS"
-        
-        initializeMetal()
+        fileNameDateFormatter.dateFormat = "yyyy-MM-dd-HH-mm-ss"
+//        initializeMetal()
+    }
+    
+    func setCaptureId(captureId: Int) {
+        self.captureId = captureId
     }
     
     
@@ -90,7 +96,7 @@ class LightDecoder: NSObject {
     
     
     func add(image: UIImage) {
-      //  frameBuffers.append(buffer)
+        // convert buffer to PNG and save it
         let now = Date()
         let dateString = fileNameDateFormatter.string(from: now)
         let fileName = String(format: "%@.png", dateString)
@@ -125,9 +131,6 @@ class LightDecoder: NSObject {
         }
     }
     
-    
-    
-
     class DataFile {
         let data: Data
         let fileName: String
@@ -141,38 +144,45 @@ class LightDecoder: NSObject {
     var dataFileArray = [DataFile]()
     var processingDataFiles = false
     var savingFiles = false
-    var shouldSave = false
     
     func addToArrayForSaving(imageBytes: UnsafeRawPointer, length: Int) {
+        // copy pixel buffer to array and save it every 90 frames
         let data = Data(bytes: imageBytes, count: length)
         let now = Date()
         let dateString = fileNameDateFormatter.string(from: now)
-        let fileName = String(format: "%@.data", dateString)
+        let fileName = String(format: "%@_%d.data", dateString, self.captureId)
         let dataFile = DataFile(data: data, fileName: fileName)
         if savingFiles == false {
-            if shouldSave == true {
-                dataFileArray.append(dataFile)
-            
-                if dataFileArray.count >= 90 {
-                    savingFiles = true
-                    DispatchQueue.global(qos: .userInitiated).async {
-                        
-                        for dataFile in self.dataFileArray {
-                            NSLog("Saving file")
-                            self.write(imageData: dataFile.data, to: dataFile.fileName)
-                        }
-                        self.dataFileArray.removeAll()
-                        self.savingFiles = false
-                        self.shouldSave = false
-                    }
+            // check if the file system is busy writing from previous session
+            //
+            dataFileArray.append(dataFile)
+            if dataFileArray.count >= 90 {
+                savingFiles = true
+                DispatchQueue.global(qos: .userInitiated).async {
+                    self.writeEntireArray(to: self.dataFileArray[0].fileName)
+//                    for dataFile in self.dataFileArray {
+//                        NSLog("Saving file")
+//                        self.write(imageData: dataFile.data, to: dataFile.fileName)
+//                    }
+                    self.dataFileArray.removeAll()
+                    self.savingFiles = false
                 }
             }
-        } else {
-            shouldSave = false
         }
     }
     
-    
+    func writeEntireArray(to filename: String) {
+        let url = self.dir.appendingPathComponent(filename) as URL
+        for dataFile in self.dataFileArray {
+            do {
+                try dataFile.data.appendToFile(fileURL: url)
+            } catch {
+                NSLog("save error")
+                return
+            }
+        }
+        NSLog("Saved file")
+    }
     
     func write(imageData: Data, to fileName: String) {
         let paths = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)
@@ -182,7 +192,7 @@ class LightDecoder: NSObject {
                 try imageData.write(to: filePath, options: .atomic)
             }
             catch {
-                // Handle the error
+                NSLog("write error")
             }
         }
         
@@ -590,7 +600,7 @@ class LightDecoder: NSObject {
         NSLog("number of matches even: %d", numberOfMatchesEven)
     }
     
-    
+
     
     
     
@@ -664,4 +674,19 @@ class LightDecoder: NSObject {
 //
 //    }
     
+}
+
+extension Data {
+    func appendToFile(fileURL: URL) throws {
+        if let fileHandle = FileHandle(forWritingAtPath: fileURL.path) {
+            defer {
+                fileHandle.closeFile()
+            }
+            fileHandle.seekToEndOfFile()
+            fileHandle.write(self)
+        }
+        else {
+            try write(to: fileURL, options: .atomic)
+        }
+    }
 }
