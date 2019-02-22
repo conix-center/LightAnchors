@@ -681,7 +681,7 @@ class LightDecoder: NSObject {
         let dataImageArrayOdd = UnsafeMutablePointer<UInt8>.allocate(capacity: length)
         for i in 0..<length {
             let snr = (Double(maxArray[i])-Double(minArray[i])) / (Double(baselineMaxArrayOdd[i])-Double(baselineMinArrayOdd[i]))
-            if dataArrayOdd[i] == 0x2A && snr > 30 {
+            if dataArrayOdd[i] == 0x2A && snr > 25 {
            //     NSLog("snr: %f", snr)
                 dataImageArrayOdd[i] = 0xFF
             }
@@ -706,7 +706,7 @@ class LightDecoder: NSObject {
         let dataImageArrayEven = UnsafeMutablePointer<UInt8>.allocate(capacity: length)
         for i in 0..<length {
             let snr = (Double(maxArray[i])-Double(minArray[i])) / (Double(baselineMaxArrayEven[i])-Double(baselineMinArrayEven[i]))
-            if dataArrayEven[i] == 0x2A && snr > 30 {
+            if dataArrayEven[i] == 0x2A && snr > 25 {
                // NSLog("snr: %f", snr)
                 dataImageArrayEven[i] = 0xFF
             }

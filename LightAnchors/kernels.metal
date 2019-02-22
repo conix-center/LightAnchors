@@ -10,6 +10,7 @@
 #include <metal_math>
 //#include <metal_integer>
 
+#define NUM_PREAMBLE_BITS 6
 #define NUM_DATA_BITS 6
 #define NUM_SNR_BASELINE_BITS 4
 
@@ -21,16 +22,21 @@ constant char preamble [[ function_constant(1) ]];
 
 
 
+
 kernel void matchPreamble(
                           const device uchar4 *image [[ buffer(0) ]],
-                          device uchar4 *historyBuffer [[ buffer(1) ]],
+                          device uchar4 *preambleBuffer [[ buffer(1) ]],
                           device uchar4 *matchBuffer [[ buffer(2) ]],
                           device uchar4 *minBuffer [[ buffer(3) ]],
                           device uchar4 *maxBuffer [[ buffer(4) ]],
                           device uchar4 *dataBuffer [[ buffer(5) ]],
                           device uchar4 *baselineMinBuffer [[ buffer(6) ]],
                           device uchar4 *baselineMaxBuffer [[ buffer(7) ]],
-                        //  device uchar4 *snrBuffer [[ buffer(8) ]],
+                          const device uchar4 *prevImage1 [[ buffer(8) ]],
+                          const device uchar4 *prevImage2 [[ buffer(9) ]],
+                          const device uchar4 *prevImage3 [[ buffer(10) ]],
+                          const device uchar4 *prevImage4 [[ buffer(11) ]],
+                          const device uchar4 *prevImage5 [[ buffer(12) ]],
                           uint id [[ thread_position_in_grid ]]
                           ) {
     
@@ -47,12 +53,12 @@ kernel void matchPreamble(
         bool4 binaryPixel = image[id] > thresh;
         
         /* apply current frame binary value to history buffer */
-        uchar4 history = historyBuffer[id];
-        history = (history << 1) | (uchar4)binaryPixel;
-        historyBuffer[id] = history;
+        uchar4 possiblePreamble = preambleBuffer[id];
+        possiblePreamble = (possiblePreamble << 1) | (uchar4)binaryPixel;
+        possiblePreambleBuffer[id] = possiblePreamble;
         
         /* if history buffer matches preamble start decoding bit 1 of the data */
-        uchar4 match = (uchar4)(((history ^ preamble) == 0) || (bool4)matchBuffer[id]);
+        uchar4 match = (uchar4)(((preamble ^ preamble) == 0) || (bool4)matchBuffer[id]);
         matchBuffer[id] = match;
         
     } else {// data decoder
