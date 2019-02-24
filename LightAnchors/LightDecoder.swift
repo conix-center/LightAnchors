@@ -389,7 +389,15 @@ class LightDecoder: NSObject {
     var matchPreambleInitialized = false
     var evenFrame = false
     
+    var decoding = 0
+
+    
     func decode(imageBytes: UnsafeRawPointer, length: Int) {
+        evenFrame = !evenFrame
+        
+        NSLog("decoding count: %d", decoding)
+        decoding += 1
+        
         let start = Date().timeIntervalSince1970
         if matchPreambleInitialized == false {
             setupMatchPreamble()
@@ -406,8 +414,8 @@ class LightDecoder: NSObject {
         matchPreamble(imageBuffer: imageBuffer)
         let end = Date().timeIntervalSince1970
         NSLog("decode runtime: %f", end-start)
-        
-        evenFrame = !evenFrame
+        decoding -= 1
+
     }
     
     
@@ -423,8 +431,18 @@ class LightDecoder: NSObject {
     var baselineMinBufferEven: MTLBuffer?
     var baselineMaxBufferEven: MTLBuffer?
     
+    
     var minBuffer: MTLBuffer?
     var maxBuffer: MTLBuffer?
+    
+    var oddBufferArray = [MTLBuffer]()
+    var evenBufferArray = [MTLBuffer]()
+    
+    var dataMinBufferOdd: MTLBuffer?
+    var dataMaxBufferOdd: MTLBuffer?
+    var dataMinBufferEven: MTLBuffer?
+    var dataMaxBufferEven: MTLBuffer?
+    
     
     func setupMatchPreamble() {
         guard let library = self.library else {
@@ -444,19 +462,22 @@ class LightDecoder: NSObject {
         }
         
         bufferLength = 1920*1440
-        historyBufferOdd = device?.makeBuffer(length: bufferLength, options: .storageModePrivate)
+        historyBufferOdd = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
         matchBufferOdd = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
         dataBufferOdd = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
         baselineMinBufferOdd = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
         baselineMaxBufferOdd = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
         
-        historyBufferEven = device?.makeBuffer(length: bufferLength, options: .storageModePrivate)
+        historyBufferEven = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
         matchBufferEven = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
         dataBufferEven = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
         baselineMinBufferEven = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
         baselineMaxBufferEven = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
         
-        
+        dataMinBufferOdd = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
+        dataMaxBufferOdd = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
+        dataMinBufferEven = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
+        dataMaxBufferEven = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
         
         self.minBuffer = device?.makeBuffer(length: bufferLength, options:.storageModeShared)
         if let minBuffer = self.minBuffer {
@@ -482,18 +503,61 @@ class LightDecoder: NSObject {
         var dBuffer: MTLBuffer?
         var baselineMinBufferOpt: MTLBuffer?
         var baselineMaxBufferOpt: MTLBuffer?
-        if evenFrame != true {
+        var prevBuffer1: MTLBuffer?
+        var prevBuffer2: MTLBuffer?
+        var prevBuffer3: MTLBuffer?
+        var prevBuffer4: MTLBuffer?
+        var prevBuffer5: MTLBuffer?
+        
+        var dataMinBufferOpt: MTLBuffer?
+        var dataMaxBufferOpt: MTLBuffer?
+        
+        if evenFrame != true {//odd
             hBuffer = self.historyBufferOdd
             mBuffer = self.matchBufferOdd
             dBuffer = self.dataBufferOdd
             baselineMinBufferOpt = self.baselineMinBufferOdd
             baselineMaxBufferOpt = self.baselineMaxBufferOdd
+            
+            oddBufferArray.append(imageBuffer)
+            while oddBufferArray.count > 6 {
+                oddBufferArray.remove(at: 0)
+            }
+            if oddBufferArray.count < 6 {
+                return
+            }
+            prevBuffer1 = oddBufferArray[4]
+            prevBuffer2 = oddBufferArray[3]
+            prevBuffer3 = oddBufferArray[2]
+            prevBuffer4 = oddBufferArray[1]
+            prevBuffer5 = oddBufferArray[0]
+            
+            dataMinBufferOpt = self.dataMinBufferOdd
+            dataMaxBufferOpt = self.dataMaxBufferOdd
         } else {
             hBuffer = self.historyBufferEven
             mBuffer = self.matchBufferEven
             dBuffer = self.dataBufferEven
             baselineMinBufferOpt = self.baselineMinBufferEven
             baselineMaxBufferOpt = self.baselineMaxBufferEven
+            
+            evenBufferArray.append(imageBuffer)
+            while evenBufferArray.count > 6 {
+                evenBufferArray.remove(at: 0)
+            }
+            if evenBufferArray.count < 6 {
+                return
+            }
+            
+            prevBuffer1 = evenBufferArray[4]
+            prevBuffer2 = evenBufferArray[3]
+            prevBuffer3 = evenBufferArray[2]
+            prevBuffer4 = evenBufferArray[1]
+            prevBuffer5 = evenBufferArray[0]
+            
+            dataMinBufferOpt = self.dataMinBufferEven
+            dataMaxBufferOpt = self.dataMaxBufferEven
+            
         }
         
         guard let historyBuffer = hBuffer else {
@@ -520,6 +584,43 @@ class LightDecoder: NSObject {
             NSLog("no baseline max buffer")
             return
         }
+        
+        guard let prevImageBuffer1 = prevBuffer1 else {
+            NSLog("no prevBuffer1")
+            return
+        }
+        
+        guard let prevImageBuffer2 = prevBuffer2 else {
+            NSLog("no prevBuffer2")
+            return
+        }
+        
+        guard let prevImageBuffer3 = prevBuffer3 else {
+            NSLog("no prevBuffer3")
+            return
+        }
+        
+        guard let prevImageBuffer4 = prevBuffer4 else {
+            NSLog("no prevBuffer4")
+            return
+        }
+        
+        guard let prevImageBuffer5 = prevBuffer5 else {
+            NSLog("no prevBuffer5")
+            return
+        }
+        
+        guard let dataMinBuffer = dataMinBufferOpt else {
+            NSLog("no data min buffer")
+            return
+        }
+        
+        guard let dataMaxBuffer = dataMaxBufferOpt else {
+            NSLog("no data max buffer")
+            return
+        }
+        
+  
         
         if imageBuffer.length != historyBuffer.length || imageBuffer.length != matchBuffer.length {
             NSLog("buffers do not match")
@@ -571,6 +672,13 @@ class LightDecoder: NSObject {
         computeCommandEncoder.setBuffer(dataBuffer, offset: 0, index: 5)
         computeCommandEncoder.setBuffer(baselineMinBuffer, offset: 0, index: 6)
         computeCommandEncoder.setBuffer(baselineMaxBuffer, offset: 0, index: 7)
+        computeCommandEncoder.setBuffer(prevImageBuffer1, offset: 0, index: 8)
+        computeCommandEncoder.setBuffer(prevImageBuffer2, offset: 0, index: 9)
+        computeCommandEncoder.setBuffer(prevImageBuffer3, offset: 0, index: 10)
+        computeCommandEncoder.setBuffer(prevImageBuffer4, offset: 0, index: 11)
+        computeCommandEncoder.setBuffer(prevImageBuffer5, offset: 0, index: 12)
+        computeCommandEncoder.setBuffer(dataMinBuffer, offset: 0, index: 13)
+        computeCommandEncoder.setBuffer(dataMaxBuffer, offset: 0, index: 14)
         computeCommandEncoder.setComputePipelineState(pipelineState)
         
         let threadExecutionWidth = pipelineState.threadExecutionWidth
@@ -587,22 +695,60 @@ class LightDecoder: NSObject {
     }
     
     
-    func countFoundPreambleBits() {
+    
+    
+    
+    
+    
+    
+    func evaluateResults() {
         guard let matchBufferOdd = self.matchBufferOdd else {
             NSLog("no match buffer")
             return
         }
+        
+        let length = 1920*1440
+        
         let matchArrayOdd = matchBufferOdd.contents().assumingMemoryBound(to: UInt8.self)
-        var numberOfMatchesOdd = 0
+        var numberOfPreambleMatchesOdd = 0
         for i in 0..<bufferLength {
             if matchArrayOdd[i] == 1 {
-                numberOfMatchesOdd += 1
+                numberOfPreambleMatchesOdd += 1
             }
         }
 //        for i in 0..<100 {
 //            NSLog("his odd 0x%x", matchArrayOdd[i])
 //        }
-        NSLog("number of matches odd: %d", numberOfMatchesOdd)
+
+        
+        guard let minArray = self.minBuffer?.contents().assumingMemoryBound(to: UInt8.self) else {
+            NSLog("no minArray")
+            return
+        }
+        let minImage = UIImage.image(buffer: minArray, length: 1920*1440, rowWidth: 1920)
+        
+        guard let maxArray = self.maxBuffer?.contents().assumingMemoryBound(to: UInt8.self) else {
+            NSLog("no maxArray")
+            return
+        }
+        let maxImage = UIImage.image(buffer: maxArray, length: 1920*1440, rowWidth: 1920)
+        
+        var historyBufferImageOdd: UIImage?
+        var historyBufferImageEven: UIImage?
+        
+        guard let historyArrayOdd = self.historyBufferOdd?.contents().assumingMemoryBound(to: UInt8.self) else {
+            NSLog("no history array odd")
+            return;
+        }
+            historyBufferImageOdd = UIImage.image(buffer: historyArrayOdd, length: length, rowWidth: 1920)
+        
+        if let historyArrayEven = self.historyBufferEven?.contents().assumingMemoryBound(to: UInt8.self) {
+            historyBufferImageEven = UIImage.image(buffer: historyArrayEven, length: length, rowWidth: 1920)
+        }
+        
+        for i in 0..<1920 {
+            NSLog(" possible preamble: 0x%x", historyArrayOdd[1920*720+i])
+        }
         
         
         
@@ -611,10 +757,10 @@ class LightDecoder: NSObject {
             return
         }
         let matchArrayEven = matchBufferEven.contents().assumingMemoryBound(to: UInt8.self)
-        var numberOfMatchesEven = 0
+        var numberOfPreambleMatchesEven = 0
         for i in 0..<bufferLength {
             if matchArrayEven[i] == 1 {
-                numberOfMatchesEven += 1
+                numberOfPreambleMatchesEven += 1
             }
         }
         if let maxArray = self.maxBuffer?.contents().assumingMemoryBound(to: UInt8.self), let minArray = self.minBuffer?.contents().assumingMemoryBound(to: UInt8.self) {
@@ -626,7 +772,7 @@ class LightDecoder: NSObject {
             }
         }
         
-        let length = 1920*1440
+
         
         var matchImageOdd: UIImage?
         var matchImageEven: UIImage?
@@ -658,17 +804,7 @@ class LightDecoder: NSObject {
             return
         }
         
-        guard let minArray = self.minBuffer?.contents().assumingMemoryBound(to: UInt8.self) else {
-            NSLog("no minArray")
-            return
-        }
-        let minImage = UIImage.image(buffer: minArray, length: 1920*1440, rowWidth: 1920)
-        
-        guard let maxArray = self.maxBuffer?.contents().assumingMemoryBound(to: UInt8.self) else {
-            NSLog("no maxArray")
-            return
-        }
-        let maxImage = UIImage.image(buffer: maxArray, length: 1920*1440, rowWidth: 1920)
+
         
         guard let baselineMinArrayOdd = self.baselineMinBufferOdd?.contents().assumingMemoryBound(to: UInt8.self) else {
             NSLog("no baselinMinArrayOdd")
@@ -678,15 +814,44 @@ class LightDecoder: NSObject {
             NSLog("no baselinMaxArrayOdd")
             return
         }
+        
+        guard let dataMinArrayOdd = self.dataMinBufferOdd?.contents().assumingMemoryBound(to: UInt8.self) else {
+            NSLog("no dataMaxArrayEven")
+            return
+        }
+        
+        guard let dataMaxArrayOdd = self.dataMaxBufferOdd?.contents().assumingMemoryBound(to: UInt8.self) else {
+            NSLog("no dataMaxArrayEven")
+            return
+        }
+        
         let dataImageArrayOdd = UnsafeMutablePointer<UInt8>.allocate(capacity: length)
+        let dataImageArrayOddNoSNR = UnsafeMutablePointer<UInt8>.allocate(capacity: length)
+        
+        var numOddMatchingData = 0
+        var numOddMatchingDataAndSnr = 0
         for i in 0..<length {
-            let snr = (Double(maxArray[i])-Double(minArray[i])) / (Double(baselineMaxArrayOdd[i])-Double(baselineMinArrayOdd[i]))
-            if dataArrayOdd[i] == 0x2A && snr > 25 {
-           //     NSLog("snr: %f", snr)
-                dataImageArrayOdd[i] = 0xFF
+            let snr = (Double(dataMaxArrayOdd[i])-Double(dataMinArrayOdd[i])) / (Double(baselineMaxArrayOdd[i])-Double(baselineMinArrayOdd[i]))
+
+            if dataArrayOdd[i] == 0x2A {
+                NSLog("odd max: %d, min: %d, snr: %f", dataMaxArrayOdd[i], dataMinArrayOdd[i], snr)
+                numOddMatchingData += 1
+                if snr > 100 && snr.isFinite {
+                    numOddMatchingDataAndSnr += 1
+                    dataImageArrayOdd[i] = 0xFF
+                } else {
+                    dataImageArrayOddNoSNR[i] = 0xFF
+                }
             }
         }
+        
+        for i in 0..<200 {
+            NSLog("data min: %d", dataMinArrayOdd[i])
+            NSLog("data max: %d", dataMaxArrayOdd[i])
+        }
+        
         dataImageOdd = UIImage.image(buffer: dataImageArrayOdd, length: length, rowWidth: 1920)
+
         
         
         guard let dataArrayEven = self.dataBufferEven?.contents().assumingMemoryBound(to: UInt8.self) else {
@@ -703,15 +868,42 @@ class LightDecoder: NSObject {
             return
         }
         
+        guard let dataMinArrayEven = self.dataMinBufferEven?.contents().assumingMemoryBound(to: UInt8.self) else {
+            NSLog("no dataMaxArrayEven")
+            return
+        }
+        
+        guard let dataMaxArrayEven = self.dataMaxBufferEven?.contents().assumingMemoryBound(to: UInt8.self) else {
+            NSLog("no dataMaxArrayEven")
+            return
+        }
+        
+        var numEvenMatchingData = 0
+        var numEvenMatchingDataAndSnr = 0
         let dataImageArrayEven = UnsafeMutablePointer<UInt8>.allocate(capacity: length)
+        let dataImageArrayEvenNoSNR = UnsafeMutablePointer<UInt8>.allocate(capacity: length)
         for i in 0..<length {
-            let snr = (Double(maxArray[i])-Double(minArray[i])) / (Double(baselineMaxArrayEven[i])-Double(baselineMinArrayEven[i]))
-            if dataArrayEven[i] == 0x2A && snr > 25 {
-               // NSLog("snr: %f", snr)
-                dataImageArrayEven[i] = 0xFF
+            let snr = (Double(dataMaxArrayEven[i])-Double(dataMinArrayEven[i])) / (Double(baselineMaxArrayEven[i])-Double(baselineMinArrayEven[i]))
+
+            if dataArrayEven[i] == 0x2A {
+                NSLog("even max: %d, min: %d, snr: %f", dataMaxArrayEven[i], dataMinArrayEven[i], snr)
+                numEvenMatchingData += 1
+                if snr > 100 && snr.isFinite {
+                    numEvenMatchingDataAndSnr += 1
+                    dataImageArrayEven[i] = 0xFF
+                } else {
+                    dataImageArrayEvenNoSNR[i] = 0xFF;
+                }
             }
         }
         dataImageEven = UIImage.image(buffer: dataImageArrayEven, length: length, rowWidth: 1920)
+     
+        NSLog("number of preamble matches odd: %d", numberOfPreambleMatchesOdd)
+        NSLog("num odd matching data: %d", numOddMatchingData)
+        NSLog("num odd matching data and snr: %d", numOddMatchingDataAndSnr)
+        NSLog("number of preamble matches even: %d", numberOfPreambleMatchesEven)
+        NSLog("num even matching data: %d", numEvenMatchingData)
+        NSLog("num even matching data and snr: %d", numEvenMatchingDataAndSnr)
         
         
         let dataImageArray = UnsafeMutablePointer<UInt8>.allocate(capacity: length)
@@ -720,42 +912,18 @@ class LightDecoder: NSObject {
         }
         let dataImage = UIImage.image(buffer: dataImageArray, length: length, rowWidth: 1920)
         
-
-
+        let dataImageArrayNoSNR = UnsafeMutablePointer<UInt8>.allocate(capacity: length)
+        for i in 0..<length {
+            dataImageArrayNoSNR[i] = dataImageArrayOddNoSNR[i] | dataImageArrayEvenNoSNR[i]
+        }
+        let dataImageNoSNR = UIImage.image(buffer: dataImageArrayNoSNR, length: length, rowWidth: 1920)
         
         
 
-        NSLog("number of matches even: %d", numberOfMatchesEven)
         
         
-//        var maxOddMatch: UInt8 = 0
-//        for i in 0..<length {
-//            if matchArrayOdd[i] > maxOddMatch {
-//                maxOddMatch = matchArrayOdd[i]
-//            }
-//        }
-//
-//        var maxEvenMatch: UInt8 = 0
-//        for i in 0..<length {
-//            if matchArrayEven[i] > maxEvenMatch {
-//                maxEvenMatch = matchArrayEven[i]
-//            }
-//        }
-//
-//        NSLog("max odd match: %d", maxOddMatch)
-//        NSLog("max even match: %d", maxEvenMatch)
         
-//        for i in 0..<length {
-//            if dataArrayOdd[i] != 0 {
-//                NSLog("Odd 0x%x", dataArrayOdd[i])
-//            }
-//        }
-        
-//        for i in 0..<length {
-//            if dataArrayEven[i] != 0 {
-//                NSLog("Even 0x%x", dataArrayEven[i])
-//            }
-//        }
+
         
     }
     
@@ -766,72 +934,6 @@ class LightDecoder: NSObject {
     
     
 
-//    lazy var imageQueue = DispatchQueue(label: "imagequeue", qos: .utility, attributes: [], autoreleaseFrequency: .workItem, target: nil)
-//    let numImageWorkPartitions = 20
-//    func add(imageData: Data) {
-//
-//
-//        let bufferSize = 2
-//        imageDataArray.append(imageData)
-//        while imageDataArray.count > bufferSize {
-//            imageDataArray.remove(at: 0)
-//        }
-//        imageQueue.sync {
-//            let imageGroup = DispatchGroup()
-//        if self.imageDataArray.count >= bufferSize {
-////            let imageDataArrayCopy = imageDataArray.map { (data) -> Data in
-////                return data
-////            }
-//
-//                let byteCount = self.imageDataArray[0].count
-//                var diffData = Data(count: byteCount)//Data(count: byteCount)
-//                for imageIndex in 1..<self.imageDataArray.count {
-//                    let currentImageData = self.imageDataArray[imageIndex]
-//                    let partitionSize = currentImageData.count / numImageWorkPartitions
-//                    let prevImageData = self.imageDataArray[imageIndex-1]
-//                    //for pixelIndex in 0..<currentImageData.count {
-//                    for partitionIndex in 0..<2/*numImageWorkPartitions*/ {
-//                        imageGroup.enter()
-//                        DispatchQueue.global(qos: .userInitiated).async {
-//                            for pixelIndex in partitionIndex*partitionSize..<(partitionIndex+1)*partitionSize {
-//
-//                                let prevPixel = prevImageData[pixelIndex]
-//                                let currPixel = currentImageData[pixelIndex]
-//                                let diff:UInt8 = UInt8(abs(Int(currPixel) - Int(prevPixel)))
-//                       // if diff > diffData[pixelIndex] {
-//
-//
-//                                NSLog("%d pixelIndex: %d", partitionIndex, pixelIndex)
-//                                NSLog("%d diffData.count: %d", partitionIndex, diffData.count)
-//
-//                                diffData[pixelIndex] = diff
-//                            }
-//                            imageGroup.leave()
-//                        }
-//                       // }
-//                    }
-//                }
-//                imageGroup.wait()
-//
-//                var largestDiffValue:UInt8 = 0
-//                var largestDiffIndex = 0
-//                for pixelIndex in 0..<byteCount {
-//                    if diffData[pixelIndex] > largestDiffValue {
-//                        largestDiffIndex = pixelIndex
-//                        largestDiffValue = diffData[pixelIndex]
-//                    }
-//                }
-//
-//                let x = largestDiffIndex % self.width
-//                let y = largestDiffIndex / self.width
-//
-//                NSLog("largest diff x: \(x), y: \(y)")
-//
-//
-//            }
-//        }
-//
-//    }
     
     
     

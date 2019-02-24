@@ -200,7 +200,7 @@ class ViewController: UIViewController {
         
         configuration.planeDetection = .horizontal//[.horizontal, .vertical]
         configuration.worldAlignment = /*.gravity*/.gravityAndHeading//based on compass
-        sceneView.debugOptions = [.showWorldOrigin, .showFeaturePoints/*.showWireframe*/]
+      //  sceneView.debugOptions = [.showWorldOrigin, .showFeaturePoints/*.showWireframe*/]
         // Run the view's session
         sceneView.session.run(configuration)
         
@@ -221,7 +221,7 @@ class ViewController: UIViewController {
         frameRateLabel.textColor = UIColor.red
         
 
-        lightDecoder.countFoundPreambleBits()
+      //  lightDecoder.evaluateResults()
     }
 
     
@@ -304,7 +304,7 @@ class ViewController: UIViewController {
             UserDefaults.standard.setValue(captureId, forKey: kCaptureId)
             self.title = String(format: "Test #: %d", captureId)
             
-            lightDecoder.countFoundPreambleBits()
+            lightDecoder.evaluateResults()
         }
         updateCaptureButton()
     }
@@ -471,7 +471,7 @@ extension ViewController: ARSCNViewDelegate {
     func renderer(_ renderer: SCNSceneRenderer, didAdd node: SCNNode, for anchor: ARAnchor) {
         DispatchQueue.main.async {
             if let planeAnchor = anchor as? ARPlaneAnchor {
-                self.addPlane(node: node, anchor: planeAnchor)
+     //           self.addPlane(node: node, anchor: planeAnchor)
             }
         }
     }
