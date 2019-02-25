@@ -222,6 +222,8 @@ class ViewController: UIViewController {
         
         frameRateLabel.textColor = UIColor.red
         
+        motionManager.startDeviceMotionUpdates()
+        
 
         lightDecoder.countFoundPreambleBits()
     }
@@ -331,26 +333,26 @@ class ViewController: UIViewController {
     
     
     @objc func handleTap(gestureRecognizer: UITapGestureRecognizer) {
-        NSLog("handleTap")
-        let tapLocation = gestureRecognizer.location(in: sceneView)
-        NSLog("Tap Location x: \(tapLocation.x), y: \(tapLocation.y)")
-//        if let frame = lastFrame {
-            let results = sceneView.hitTest(tapLocation, types: [/*.existingPlaneUsingGeometry, .existingPlane, */.existingPlaneUsingExtent, .estimatedHorizontalPlane, .estimatedVerticalPlane])
-            NSLog("number of hit test results: \(results.count)")
-            if let result = results.last {
-                
-//                let x = result.worldTransform.columns.3[0]
-//                let y = result.worldTransform.columns.3[1]
-//                let z = result.worldTransform.columns.3[2]
-//                let transform = SCNMatrix4.init(result.worldTransform)
-                let x = result.worldTransform.columns.3.x//transform.m41
-                let y = result.worldTransform.columns.3.y//transform.m42
-                let z = result.worldTransform.columns.3.z//transform.m43
-                targetPoint3d = SCNVector3(x: x, y: y, z: z)
-                NSLog("targetPoint3d x: \(x), y: \(y), z: \(z)")
-            }
- //       }
-        
+//        NSLog("handleTap")
+//        let tapLocation = gestureRecognizer.location(in: sceneView)
+//        NSLog("Tap Location x: \(tapLocation.x), y: \(tapLocation.y)")
+////        if let frame = lastFrame {
+//            let results = sceneView.hitTest(tapLocation, types: [/*.existingPlaneUsingGeometry, .existingPlane, */.existingPlaneUsingExtent, .estimatedHorizontalPlane, .estimatedVerticalPlane])
+//            NSLog("number of hit test results: \(results.count)")
+//            if let result = results.last {
+//
+////                let x = result.worldTransform.columns.3[0]
+////                let y = result.worldTransform.columns.3[1]
+////                let z = result.worldTransform.columns.3[2]
+////                let transform = SCNMatrix4.init(result.worldTransform)
+//                let x = result.worldTransform.columns.3.x//transform.m41
+//                let y = result.worldTransform.columns.3.y//transform.m42
+//                let z = result.worldTransform.columns.3.z//transform.m43
+//                targetPoint3d = SCNVector3(x: x, y: y, z: z)
+//                NSLog("targetPoint3d x: \(x), y: \(y), z: \(z)")
+//            }
+// //       }
+//
         
         
     }
@@ -367,7 +369,6 @@ class ViewController: UIViewController {
             let width = CVPixelBufferGetWidth(buffer)
             let height = CVPixelBufferGetHeight(buffer)
             let bytesPerRow = CVPixelBufferGetBytesPerRow(buffer)
-            
 //            NSLog("pixelBuffer width: %d, height: %d, format: \(format), bytes per row: \(bytesPerRow) ", width, height)
             
             let grayPlaneHeight = 1920
@@ -381,7 +382,7 @@ class ViewController: UIViewController {
                     grayPlaneIndex = planeIndex
                 }
             }
-    
+            
             let numGrayBytes = grayPlaneHeight*grayPlaneWidth
             
             CVPixelBufferLockBaseAddress(buffer, .readOnly)
