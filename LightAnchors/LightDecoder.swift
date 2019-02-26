@@ -393,7 +393,7 @@ class LightDecoder: NSObject {
 
     
     func decode(imageBytes: UnsafeRawPointer, length: Int) {
-        evenFrame = !evenFrame
+//        evenFrame = !evenFrame
         
         NSLog("decoding count: %d", decoding)
         decoding += 1
@@ -834,9 +834,9 @@ class LightDecoder: NSObject {
             let snr = (Double(dataMaxArrayOdd[i])-Double(dataMinArrayOdd[i])) / (Double(baselineMaxArrayOdd[i])-Double(baselineMinArrayOdd[i]))
 
             if dataArrayOdd[i] == 0x2A {
-                NSLog("odd max: %d, min: %d, snr: %f", dataMaxArrayOdd[i], dataMinArrayOdd[i], snr)
+           //     NSLog("odd max: %d, min: %d, snr: %f", dataMaxArrayOdd[i], dataMinArrayOdd[i], snr)
                 numOddMatchingData += 1
-                if snr > 100 && snr.isFinite {
+                if snr > 10 && snr.isFinite {
                     numOddMatchingDataAndSnr += 1
                     dataImageArrayOdd[i] = 0xFF
                 } else {
@@ -886,9 +886,9 @@ class LightDecoder: NSObject {
             let snr = (Double(dataMaxArrayEven[i])-Double(dataMinArrayEven[i])) / (Double(baselineMaxArrayEven[i])-Double(baselineMinArrayEven[i]))
 
             if dataArrayEven[i] == 0x2A {
-                NSLog("even max: %d, min: %d, snr: %f", dataMaxArrayEven[i], dataMinArrayEven[i], snr)
+             //   NSLog("even max: %d, min: %d, snr: %f", dataMaxArrayEven[i], dataMinArrayEven[i], snr)
                 numEvenMatchingData += 1
-                if snr > 100 && snr.isFinite {
+                if snr > 10 && snr.isFinite {
                     numEvenMatchingDataAndSnr += 1
                     dataImageArrayEven[i] = 0xFF
                 } else {
