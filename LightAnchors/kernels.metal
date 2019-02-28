@@ -43,32 +43,7 @@ kernel void matchPreamble(
                           ) {
     /* preamble detector */
     if (matchBuffer[id][0] == 0 && matchBuffer[id][1] == 0 && matchBuffer[id][2] == 0 && matchBuffer[id][3] == 0) {
-        /* update min and max for threshold calculation */
-//        minBuffer[id] = min(minBuffer[id], image[id]);
-//        maxBuffer[id] = max(maxBuffer[id], image[id]);
-//        uchar4 thresh = (maxBuffer[id] - minBuffer[id]) / 2;
-        
-//                for (int i=0; i<4; i++) {
-//                    if (match[i] != 0) {
-//                        uchar dataMin = 0xFF;
-//                        uchar dataMax = 0;
-//
-//                        if (image[id][i] < dataMin) dataMin = image[id][i];
-//                        if (prevImage1[id][i] < dataMin) dataMin = prevImage1[id][i];
-//                        if (prevImage2[id][i] < dataMin) dataMin = prevImage2[id][i];
-//                        if (prevImage3[id][i] < dataMin) dataMin = prevImage3[id][i];
-//                        if (prevImage4[id][i] < dataMin) dataMin = prevImage4[id][i];
-//                        if (prevImage5[id][i] < dataMin) dataMin = prevImage5[id][i];
-//                        if (image[id][i] > dataMax) dataMax = image[id][i];
-//                        if (prevImage1[id][i] > dataMax) dataMax = prevImage1[id][i];
-//                        if (prevImage2[id][i] > dataMax) dataMax = prevImage2[id][i];
-//                        if (prevImage3[id][i] > dataMax) dataMax = prevImage3[id][i];
-//                        if (prevImage4[id][i] > dataMax) dataMax = prevImage4[id][i];
-//                        if (prevImage5[id][i] > dataMax) dataMax = prevImage5[id][i];
-////                        dataMinBuffer[id][i] = dataMin;
-////                        dataMaxBuffer[id][i] = dataMax;
-//                    }
-//                }
+
         
         uchar4 minValue = min(0xFF, image[id]);
         minValue = min(minValue, prevImage1[id]);
@@ -83,20 +58,6 @@ kernel void matchPreamble(
         maxValue = max(maxValue, prevImage4[id]);
         maxValue = max(maxValue, prevImage5[id]);
         uchar4 thresh = (uchar4)(((ushort4)maxValue+(ushort4)minValue)/2) ;//+ (maxValue-minValue)*3/4;
-
-        
-        
-//        /* determine whether frame is a 0 or a 1 */
-//        bool4 binaryPixel = image[id] > thresh;
-//
-//        /* apply current frame binary value to history buffer */
-//        uchar4 possiblePreamble = preambleBuffer[id];
-//        possiblePreamble = (possiblePreamble << 1) | (uchar4)binaryPixel;
-//        preambleBuffer[id] = possiblePreamble;
-//
-//        /* if history buffer matches preamble start decoding bit 1 of the data */
-//        uchar4 match = (uchar4)(((preamble ^ preamble) == 0) || (bool4)matchBuffer[id]);
-//        matchBuffer[id] = match;
         
     
         uchar4 bit = (uchar4)(prevImage5[id] > thresh);
@@ -125,7 +86,7 @@ kernel void matchPreamble(
         
         
         
-    } else {// data decoder
+    } else { /* data decoder */
         for (int i=0; i<4; i++) { /* iterate over each pixel of the vector data */
             if (matchBuffer[id][i] != 0) { /* determine which pixels of the vector have matched the preamble */
                 if (matchBuffer[id][i] == 1) {//first bit of data

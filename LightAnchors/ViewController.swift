@@ -68,6 +68,10 @@ class ViewController: UIViewController {
     
     let motionManager = CMMotionManager()
     
+    let imageView = UIImageView()
+    
+    let imageViewBackgroundColor = UIColor(red: 0, green: 0, blue: 0, alpha: 0.95)
+    
     
     init () {
         super.init(nibName: nil, bundle: nil)
@@ -171,6 +175,13 @@ class ViewController: UIViewController {
         numConnectionsLabel.textColor = UIColor.red
         numConnectionsLabel.text = "# Connections: 0"
         
+        view.addSubview(imageView)
+        imageView.translatesAutoresizingMaskIntoConstraints = false
+        imageView.topAnchor.constraint(equalTo: sceneView.topAnchor).isActive = true
+        imageView.bottomAnchor.constraint(equalTo: sceneView.bottomAnchor).isActive = true
+        imageView.leftAnchor.constraint(equalTo: sceneView.leftAnchor).isActive = true
+        imageView.rightAnchor.constraint(equalTo: sceneView.rightAnchor).isActive = true
+        
 //        view.addSubview(colorView)
 //        colorView.translatesAutoresizingMaskIntoConstraints = false
 //        colorView.widthAnchor.constraint(equalTo: view.widthAnchor, multiplier: 0.25).isActive = true
@@ -220,7 +231,11 @@ class ViewController: UIViewController {
         
         frameRateLabel.textColor = UIColor.red
         
-
+        imageView.contentMode = .scaleAspectFill
+    //    imageView.alpha = 0.9
+     //   imageView.backgroundColor = UIColor(red: 0, green: 0, blue: 0, alpha: 0.8)
+        
+        lightDecoder.delegate = self
       //  lightDecoder.evaluateResults()
     }
 
@@ -247,6 +262,8 @@ class ViewController: UIViewController {
             let whiteBalanceLock = UserDefaults.standard.bool(forKey: kWhiteBalanceLock)
             logDict?.setValue(whiteBalanceLock, forKey: "wblock")
             
+            imageView.backgroundColor = imageViewBackgroundColor
+            
             blinkTimer = Timer.scheduledTimer(withTimeInterval: 1.5, repeats: true) { (timer) in
                 NSLog("Fire!")
                 var dataValue = 0
@@ -272,6 +289,8 @@ class ViewController: UIViewController {
             capture = true
         } else { // stop
             lightAnchorManager.stopBlinking()
+            imageView.image = nil
+            imageView.backgroundColor = UIColor.clear
             do {
                 let jsonData = try JSONSerialization.data(withJSONObject: logDict, options: .prettyPrinted)
                 let jsonString = String(bytes: jsonData, encoding: .utf8)
@@ -781,6 +800,17 @@ extension UIImage {
         let result = UIImage(cgImage: imageRef, scale: scale, orientation: imageOrientation)
         return result
     }
+    
+}
+
+
+
+extension ViewController: LightDecoderDelegate {
+    func lightDecoder(_: LightDecoder, didUpdateResultImage resultImage: UIImage) {
+        NSLog("received result image")
+        imageView.image = resultImage
+    }
+    
     
 }
 

@@ -8,6 +8,13 @@
 
 import UIKit
 
+
+protocol LightDecoderDelegate {
+    
+    func lightDecoder(_ :LightDecoder, didUpdateResultImage resultImage: UIImage)
+}
+
+
 class CapturedImage {
     
     let image: UIImage
@@ -45,6 +52,8 @@ class LightDecoder: NSObject {
     var differenceFunction:MTLFunction?
     var maxFunction: MTLFunction?
     var matchPreambleFunction: MTLFunction?
+    
+    var delegate: LightDecoderDelegate?
     
     override init() {
         super.init()
@@ -393,7 +402,7 @@ class LightDecoder: NSObject {
 
     
     func decode(imageBytes: UnsafeRawPointer, length: Int) {
-//        evenFrame = !evenFrame
+        evenFrame = !evenFrame
         
         NSLog("decoding count: %d", decoding)
         decoding += 1
@@ -692,8 +701,130 @@ class LightDecoder: NSObject {
         commandBuffer.commit()
         commandBuffer.waitUntilCompleted()
         NSLog("preamble match complete")
+        
+        frameCountForImageRender += 1
+        if frameCountForImageRender == 20 {
+            frameCountForImageRender = 0
+            updateResultImage()
+        }
+
+        
     }
     
+    var frameCountForImageRender = 0
+    
+    func updateResultImage() {
+        
+        let length = 1920*1440
+        
+        guard let dataArrayOdd = dataBufferOdd?.contents().assumingMemoryBound(to: UInt8.self) else  {
+            NSLog("no data array odd")
+            return
+        }
+        
+        guard let baselineMinArrayOdd = self.baselineMinBufferOdd?.contents().assumingMemoryBound(to: UInt8.self) else {
+            NSLog("no baselinMinArrayOdd")
+            return
+        }
+        guard let baselineMaxArrayOdd = self.baselineMaxBufferOdd?.contents().assumingMemoryBound(to: UInt8.self) else {
+            NSLog("no baselinMaxArrayOdd")
+            return
+        }
+        
+        guard let dataMinArrayOdd = self.dataMinBufferOdd?.contents().assumingMemoryBound(to: UInt8.self) else {
+            NSLog("no dataMaxArrayEven")
+            return
+        }
+        
+        guard let dataMaxArrayOdd = self.dataMaxBufferOdd?.contents().assumingMemoryBound(to: UInt8.self) else {
+            NSLog("no dataMaxArrayEven")
+            return
+        }
+        
+        
+        guard let dataArrayEven = self.dataBufferEven?.contents().assumingMemoryBound(to: UInt8.self) else {
+            NSLog("no dataArrayEven")
+            return
+        }
+        
+        guard let baselineMinArrayEven = self.baselineMinBufferEven?.contents().assumingMemoryBound(to: UInt8.self) else {
+            NSLog("no baselinMinArrayOdd")
+            return
+        }
+        guard let baselineMaxArrayEven = self.baselineMaxBufferEven?.contents().assumingMemoryBound(to: UInt8.self) else {
+            NSLog("no baselinMaxArrayOdd")
+            return
+        }
+        
+        guard let dataMinArrayEven = self.dataMinBufferEven?.contents().assumingMemoryBound(to: UInt8.self) else {
+            NSLog("no dataMaxArrayEven")
+            return
+        }
+        
+        guard let dataMaxArrayEven = self.dataMaxBufferEven?.contents().assumingMemoryBound(to: UInt8.self) else {
+            NSLog("no dataMaxArrayEven")
+            return
+        }
+        
+        DispatchQueue.global(qos: .userInitiated).async {
+            
+            let dataImageArray = UnsafeMutablePointer<UInt8>.allocate(capacity: length)
+            let dataImageArrayNoSNR = UnsafeMutablePointer<UInt8>.allocate(capacity: length)
+            
+            var numOddMatchingData = 0
+            var numOddMatchingDataAndSnr = 0
+            var numEvenMatchingData = 0
+            var numEvenMatchingDataAndSnr = 0
+            for i in 0..<length {
+                let snrOdd = (Double(dataMaxArrayOdd[i])-Double(dataMinArrayOdd[i])) / (Double(baselineMaxArrayOdd[i])-Double(baselineMinArrayOdd[i]))
+                
+                if dataArrayOdd[i] == 0x2A {
+                    //     NSLog("odd max: %d, min: %d, snr: %f", dataMaxArrayOdd[i], dataMinArrayOdd[i], snr)
+                    numOddMatchingData += 1
+                    if snrOdd > 10 && snrOdd.isFinite {
+                        numOddMatchingDataAndSnr += 1
+                        dataImageArray[i] = 0xFF
+                    } else {
+                        dataImageArrayNoSNR[i] = 0xFF
+                    }
+                }
+                
+                let snrEven = (Double(dataMaxArrayEven[i])-Double(dataMinArrayEven[i])) / (Double(baselineMaxArrayEven[i])-Double(baselineMinArrayEven[i]))
+                if dataArrayEven[i] == 0x2A {
+                    //     NSLog("odd max: %d, min: %d, snr: %f", dataMaxArrayOdd[i], dataMinArrayOdd[i], snr)
+                    numEvenMatchingData += 1
+                    if snrEven > 10 && snrEven.isFinite {
+                        numEvenMatchingDataAndSnr += 1
+                        dataImageArray[i] = 0xFF
+                    } else {
+                        dataImageArrayNoSNR[i] = 0xFF
+                    }
+                }
+                
+            }
+            
+            let rotatedImageArray = UnsafeMutablePointer<UInt8>.allocate(capacity: length)
+            for row in 0..<1440 {
+                for column in 0..<1920 {
+                    rotatedImageArray[column*1440 + (1439-row)] = dataImageArray[row*1920+column]
+                }
+            }
+            
+            if let image = UIImage.colorImage(buffer: rotatedImageArray, length: length, rowWidth: 1440) {
+                DispatchQueue.main.async {
+                    self.delegate?.lightDecoder(self, didUpdateResultImage: image)
+                }
+            }
+
+            free(dataImageArray)
+            free(dataImageArrayNoSNR)
+            free(rotatedImageArray)
+            
+            
+        }
+        
+    }
+
     
     
     
@@ -916,7 +1047,7 @@ class LightDecoder: NSObject {
         for i in 0..<length {
             dataImageArrayNoSNR[i] = dataImageArrayOddNoSNR[i] | dataImageArrayEvenNoSNR[i]
         }
-        let dataImageNoSNR = UIImage.image(buffer: dataImageArrayNoSNR, length: length, rowWidth: 1920)
+        let dataImageNoSNR = UIImage.colorImage(buffer: dataImageArrayNoSNR, length: length, rowWidth: 1920)
         
         
 
@@ -962,6 +1093,48 @@ extension UIImage {
             return nil
         }
         let image = UIImage(cgImage: cgImage)
+        return image
+    }
+    
+    
+    class func colorImage(buffer: UnsafeMutablePointer<UInt8>, length: Int, rowWidth: Int) -> UIImage? {
+        let colorSpace = CGColorSpaceCreateDeviceRGB()
+        
+        let blueByte = 2
+        let alphaByte = 3
+        
+        let bytesPerPixel = 4
+        let colorBufferLength = length * bytesPerPixel
+        let colorRowWidthBytes = rowWidth * bytesPerPixel
+        
+        let colorBuffer = UnsafeMutablePointer<UInt8>.allocate(capacity: colorBufferLength)
+        for i in 0..<length {
+            if buffer[i] != 0 {
+                colorBuffer[i*bytesPerPixel + blueByte] = 0xFF;
+                colorBuffer[i*bytesPerPixel + alphaByte] = 0xFF;
+            }
+        }
+        
+        let data = Data(bytes: colorBuffer, count: colorBufferLength)
+        
+        guard let provider = CGDataProvider(data: data as CFData) else {
+            NSLog("no provider")
+            return nil
+        }
+        
+        let bitmapInfo:CGBitmapInfo = CGBitmapInfo(rawValue: CGImageAlphaInfo.last.rawValue)//.byteOrderMask
+//        bitmapInfo |= CGBitmapInfo(rawValue: CGImageAlphaInfo.last.rawValue).rawValue
+        
+        let intent = CGColorRenderingIntent.defaultIntent
+        
+        let imageRef = CGImage(width: rowWidth, height: length/rowWidth, bitsPerComponent: 8, bitsPerPixel: 32, bytesPerRow: colorRowWidthBytes, space: colorSpace, bitmapInfo: bitmapInfo, provider: provider, decode: nil, shouldInterpolate: false, intent: intent)
+        guard let cgImage = imageRef else {
+            NSLog("no imageRef")
+            return nil
+        }
+    
+        let image = UIImage(cgImage: cgImage)
+        free(colorBuffer)
         return image
     }
     
