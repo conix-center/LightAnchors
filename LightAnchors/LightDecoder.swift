@@ -404,7 +404,8 @@ class LightDecoder: NSObject {
     func decode(imageBytes: UnsafeRawPointer, length: Int) {
         evenFrame = !evenFrame
         
-        NSLog("decoding count: %d", decoding)
+// Adwait
+//        NSLog("decoding count: %d", decoding)
         decoding += 1
         
         let start = Date().timeIntervalSince1970
@@ -422,7 +423,8 @@ class LightDecoder: NSObject {
         }
         matchPreamble(imageBuffer: imageBuffer)
         let end = Date().timeIntervalSince1970
-        NSLog("decode runtime: %f", end-start)
+// Adwait
+//        NSLog("decode runtime: %f", end-start)
         decoding -= 1
 
     }
@@ -464,7 +466,7 @@ class LightDecoder: NSObject {
             NSLog("no library")
             return
         }
-        var threshold = 100
+        var threshold = 200
        // var preamble = 0x2A
         
         let constantValues = MTLFunctionConstantValues()
@@ -779,7 +781,8 @@ class LightDecoder: NSObject {
         computeCommandEncoder.setComputePipelineState(pipelineState)
         
         let threadExecutionWidth = pipelineState.threadExecutionWidth
-        NSLog("threadExecutionWidth: %d", threadExecutionWidth)
+        // Adwait
+//        NSLog("threadExecutionWidth: %d", threadExecutionWidth)
         let threadsPerGroup = MTLSize(width: threadExecutionWidth, height: 1, depth: 1)
         
         let numThreadGroups = MTLSize(width: /*1*/(length/4/*+threadExecutionWidth*/)/threadExecutionWidth, height: 1, depth: 1)
@@ -788,7 +791,8 @@ class LightDecoder: NSObject {
         
         commandBuffer.commit()
         commandBuffer.waitUntilCompleted()
-        NSLog("preamble match complete")
+        // Adwait
+//        NSLog("preamble match complete")
         
         frameCountForImageRender += 1
         if frameCountForImageRender == 20 {
@@ -859,6 +863,10 @@ class LightDecoder: NSObject {
             return
         }
         
+//        for i in 0..<100 {
+//            NSLog("match array %d", matchArray[i])
+//        }
+        
         DispatchQueue.global(qos: .userInitiated).async {
             
 //            let dataImageArray = UnsafeMutablePointer<UInt8>.allocate(capacity: length)
@@ -917,6 +925,10 @@ class LightDecoder: NSObject {
 //            free(dataImageArrayNoSNR)
             free(matchImageArray)
             free(rotatedImageArray)
+            
+//            for i in 0..<length {
+//                matchArray[i] = 0
+//            }
             
             
         }

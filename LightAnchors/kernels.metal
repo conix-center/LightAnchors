@@ -51,6 +51,7 @@ kernel void matchPreamble(
                           uint id [[ thread_position_in_grid ]]
                           ) {
     
+    if (matchBuffer[id][0] == 0 && matchBuffer[id][1] == 0 && matchBuffer[id][2] == 0 && matchBuffer[id][3] == 0) {
     
     int4 prevPixel11 = (int4)prevImage11[id];
     int4 prevPixel10 = (int4)prevImage10[id];
@@ -73,8 +74,37 @@ kernel void matchPreamble(
     
     int4 convolution = firstHalf + secondHalf;
     
-    matchBuffer[id] = (uchar4)(convolution>convolutionThreshold);
+    matchBuffer[id] = (uchar4)(convolution>convolutionThreshold || matchBuffer[id] != 0) ;
+//    matchBuffer[id] = (uchar4)convolution/12;
     
+    } else {
+        // ideally start decoding here
+        
+        if (matchBuffer[id][0] != 0) {
+            matchBuffer[id][0] += 1;
+            if (matchBuffer[id][0] > 19) {
+                    matchBuffer[id][0] = 0;
+            }
+        }
+        if (matchBuffer[id][1] != 0) {
+            matchBuffer[id][1] += 1;
+            if (matchBuffer[id][1] > 19) {
+                matchBuffer[id][1] = 0;
+            }
+        }
+        if (matchBuffer[id][2] != 0) {
+            matchBuffer[id][2] += 1;
+            if (matchBuffer[id][2] > 19) {
+                matchBuffer[id][2] = 0;
+            }
+        }
+        if (matchBuffer[id][3] != 0) {
+            matchBuffer[id][3] += 1;
+            if (matchBuffer[id][3] > 19) {
+                matchBuffer[id][3] = 0;
+            }
+        }
+    }
     
     
 //    /* preamble detector */
