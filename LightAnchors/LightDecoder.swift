@@ -84,11 +84,11 @@ class LightDecoder: NSObject {
             if let device = self.device {
            
                 self.library = device.makeDefaultLibrary()
-                if let library = self.library {
-                    self.differenceFunction = library.makeFunction(name: "difference")
-                    self.maxFunction = library.makeFunction(name: "max")
+//                if let library = self.library {
+//                    self.differenceFunction = library.makeFunction(name: "difference")
+//                    self.maxFunction = library.makeFunction(name: "max")
                    // setupMatchPreamble()
-                }
+//                }
                 
             }
         }
@@ -202,197 +202,197 @@ class LightDecoder: NSObject {
   
    
     
-    func add(imageBytes: UnsafeRawPointer, length: Int) {
-        
-        guard let device = self.device else {
-            NSLog("no device")
-            return
-        }
-        
-        guard let imageBuffer:MTLBuffer = device.makeBuffer(bytes: imageBytes, length: length, options: .storageModeShared) else {
-            NSLog("Cannot create image buffer")
-            return
-        }
-        if processingImageBuffers == false {
-            imageBufferArray.append(imageBuffer)
-        
-            if imageBufferArray.count >= 90 {
-                processingImageBuffers = true
-                DispatchQueue.global(qos: .userInitiated).async {
-                    let startTime = Date().timeIntervalSince1970
-                    var prevBuffer = self.imageBufferArray[0]
-                    for bufferIndex in 1..<self.imageBufferArray.count {
-                        let buffer = self.imageBufferArray[bufferIndex]
-                        self.compare( buffer, to: prevBuffer)
-                        prevBuffer = buffer
-                    }
-                    self.imageBufferArray.removeAll()
-                    let endTime = Date().timeIntervalSince1970
-                    let runTime = endTime-startTime
-                    NSLog("run time: %lf", runTime)
-                    self.processingImageBuffers = false
-                }
-            }
-        }
-        
-        
-
-    }
-    
-    
-    func compare(_ imageBuffer: MTLBuffer, to prevImageBuffer: MTLBuffer) {
-
-        
-        guard let device = self.device else {
-            NSLog("no device")
-            return
-        }
-        
-
-        
-        if imageBuffer.length != prevImageBuffer.length {
-            NSLog("buffers do not match")
-            return
-        }
-        let length = imageBuffer.length
-        
-        guard let diffBuffer = device.makeBuffer(length: length, options: .storageModePrivate) else {
-            NSLog("Cannot make result buffer")
-            return
-        }
-        
-        guard let commandQueue = self.commandQueue else {
-            NSLog("No command queue")
-            return
-        }
-        
-        guard let commandBuffer = commandQueue.makeCommandBuffer() else {
-            NSLog("Cannot make command buffer")
-            return
-        }
-        
-//        guard let library = self.library else {
-//            NSLog("No library")
+//    func add(imageBytes: UnsafeRawPointer, length: Int) {
+//
+//        guard let device = self.device else {
+//            NSLog("no device")
 //            return
 //        }
-        
-        guard let differenceFunction = self.differenceFunction else {
-            NSLog("Cannot make difference function")
-            return
-        }
-        
-        guard let differenceComputeCommandEncoder = commandBuffer.makeComputeCommandEncoder() else {
-            NSLog("Cannot make compute command encoder")
-            return
-        }
-        
-        var differenceComputePipelineState: MTLComputePipelineState?
-        do {
-            differenceComputePipelineState = try device.makeComputePipelineState(function: differenceFunction)
-        } catch {
-            NSLog("Error making compute pipeline state")
-            differenceComputeCommandEncoder.endEncoding()
-            return
-        }
-        
-        guard let differencePipelineState = differenceComputePipelineState else {
-            NSLog("No compute pipeline state")
-            differenceComputeCommandEncoder.endEncoding()
-            return
-        }
-        
-        differenceComputeCommandEncoder.setBuffer(prevImageBuffer, offset: 0, index: 0)
-        differenceComputeCommandEncoder.setBuffer(imageBuffer, offset: 0, index: 1)
-        differenceComputeCommandEncoder.setBuffer(diffBuffer, offset: 0, index: 2)
-        differenceComputeCommandEncoder.setComputePipelineState(differencePipelineState)
-        
-        let differenceThreadExecutionWidth = differencePipelineState.threadExecutionWidth
-        NSLog("threadExecutionWidth: %d", differenceThreadExecutionWidth)
-        let differenceThreadsPerGroup = MTLSize(width: differenceThreadExecutionWidth, height: 1, depth: 1)
-        
-        let differenceNumThreadGroups = MTLSize(width: /*1*/(length/4/*+threadExecutionWidth*/)/differenceThreadExecutionWidth, height: 1, depth: 1)
-        differenceComputeCommandEncoder.dispatchThreadgroups(differenceNumThreadGroups, threadsPerThreadgroup: differenceThreadsPerGroup)
-        differenceComputeCommandEncoder.endEncoding()
-        
-        commandBuffer.commit()
-        commandBuffer.waitUntilCompleted()
-        
-        
-        
-        let maxNumThreads = 128
-        
-        guard let maxValueBuffer = device.makeBuffer(length: maxNumThreads, options: .storageModeShared) else {
-            NSLog("Cannot make result buffer")
-            return
-        }
-        
-        guard let maxIndexBuffer = device.makeBuffer(length: maxNumThreads*4, options: .storageModeShared) else {
-            NSLog("Cannot make result buffer")
-            return
-        }
-        
-        guard let maxFunction = self.maxFunction else {
-            NSLog("Cannot make max function")
-            return
-        }
-        
-        guard let maxCommandBuffer = commandQueue.makeCommandBuffer() else {
-            NSLog("Cannot make command buffer")
-            return
-        }
-        
-        guard let maxComputeCommandEncoder = maxCommandBuffer.makeComputeCommandEncoder() else {
-            NSLog("Cannot make max compute command encoder")
-            return
-        }
-        
-        var maxComputePipelineState: MTLComputePipelineState?
-        do {
-            maxComputePipelineState = try device.makeComputePipelineState(function: maxFunction)
-        } catch {
-            NSLog("Error making compute pipeline state")
-            maxComputeCommandEncoder.endEncoding()
-            return
-        }
-        
-        guard let maxPipelineState = maxComputePipelineState else {
-            NSLog("No compute pipeline state")
-            maxComputeCommandEncoder.endEncoding()
-            return
-        }
-        
-        maxComputeCommandEncoder.setBuffer(diffBuffer, offset: 0, index: 0)
-        maxComputeCommandEncoder.setBuffer(maxValueBuffer, offset: 0, index: 1)
-        maxComputeCommandEncoder.setBuffer(maxIndexBuffer, offset: 0, index: 2)
-        maxComputeCommandEncoder.setComputePipelineState(maxPipelineState)
-        
-        let maxThreadExecutionWidth = maxPipelineState.threadExecutionWidth
-        NSLog("threadExecutionWidth: %d", maxThreadExecutionWidth)
-        let maxThreadsPerGroup = MTLSize(width: differenceThreadExecutionWidth, height: 1, depth: 1)
-        
-        let maxNumThreadGroups = MTLSize(width: 4, height: 1, depth: 1)
-        maxComputeCommandEncoder.dispatchThreadgroups(maxNumThreadGroups, threadsPerThreadgroup: maxThreadsPerGroup)
-        maxComputeCommandEncoder.endEncoding()
-        
-        maxCommandBuffer.commit()
-        maxCommandBuffer.waitUntilCompleted()
-        
-        var maxValue: UInt8 = 0
-        var maxIndex = 0
-        let maxValueArray: UnsafeMutablePointer<UInt8> = maxValueBuffer.contents().assumingMemoryBound(to: UInt8.self)
-        let maxIndexArray: UnsafeMutablePointer<Int> = maxIndexBuffer.contents().assumingMemoryBound(to: Int.self)
-        for i in 0..<maxNumThreads {
-            if maxValueArray[i] > maxValue {
-                maxValue = maxValueArray[i]
-                maxIndex = maxIndexArray[i]
-            }
-        }
-        
-        NSLog("max value: %d at index: %d", maxValue, maxIndex)
-        
-
-
-    }
+//
+//        guard let imageBuffer:MTLBuffer = device.makeBuffer(bytes: imageBytes, length: length, options: .storageModeShared) else {
+//            NSLog("Cannot create image buffer")
+//            return
+//        }
+//        if processingImageBuffers == false {
+//            imageBufferArray.append(imageBuffer)
+//
+//            if imageBufferArray.count >= 90 {
+//                processingImageBuffers = true
+//                DispatchQueue.global(qos: .userInitiated).async {
+//                    let startTime = Date().timeIntervalSince1970
+//                    var prevBuffer = self.imageBufferArray[0]
+//                    for bufferIndex in 1..<self.imageBufferArray.count {
+//                        let buffer = self.imageBufferArray[bufferIndex]
+//                        self.compare( buffer, to: prevBuffer)
+//                        prevBuffer = buffer
+//                    }
+//                    self.imageBufferArray.removeAll()
+//                    let endTime = Date().timeIntervalSince1970
+//                    let runTime = endTime-startTime
+//                    NSLog("run time: %lf", runTime)
+//                    self.processingImageBuffers = false
+//                }
+//            }
+//        }
+//
+//
+//
+//    }
+    
+    
+//    func compare(_ imageBuffer: MTLBuffer, to prevImageBuffer: MTLBuffer) {
+//
+//
+//        guard let device = self.device else {
+//            NSLog("no device")
+//            return
+//        }
+//
+//
+//
+//        if imageBuffer.length != prevImageBuffer.length {
+//            NSLog("buffers do not match")
+//            return
+//        }
+//        let length = imageBuffer.length
+//
+//        guard let diffBuffer = device.makeBuffer(length: length, options: .storageModePrivate) else {
+//            NSLog("Cannot make result buffer")
+//            return
+//        }
+//
+//        guard let commandQueue = self.commandQueue else {
+//            NSLog("No command queue")
+//            return
+//        }
+//
+//        guard let commandBuffer = commandQueue.makeCommandBuffer() else {
+//            NSLog("Cannot make command buffer")
+//            return
+//        }
+//
+////        guard let library = self.library else {
+////            NSLog("No library")
+////            return
+////        }
+//
+//        guard let differenceFunction = self.differenceFunction else {
+//            NSLog("Cannot make difference function")
+//            return
+//        }
+//
+//        guard let differenceComputeCommandEncoder = commandBuffer.makeComputeCommandEncoder() else {
+//            NSLog("Cannot make compute command encoder")
+//            return
+//        }
+//
+//        var differenceComputePipelineState: MTLComputePipelineState?
+//        do {
+//            differenceComputePipelineState = try device.makeComputePipelineState(function: differenceFunction)
+//        } catch {
+//            NSLog("Error making compute pipeline state")
+//            differenceComputeCommandEncoder.endEncoding()
+//            return
+//        }
+//
+//        guard let differencePipelineState = differenceComputePipelineState else {
+//            NSLog("No compute pipeline state")
+//            differenceComputeCommandEncoder.endEncoding()
+//            return
+//        }
+//
+//        differenceComputeCommandEncoder.setBuffer(prevImageBuffer, offset: 0, index: 0)
+//        differenceComputeCommandEncoder.setBuffer(imageBuffer, offset: 0, index: 1)
+//        differenceComputeCommandEncoder.setBuffer(diffBuffer, offset: 0, index: 2)
+//        differenceComputeCommandEncoder.setComputePipelineState(differencePipelineState)
+//
+//        let differenceThreadExecutionWidth = differencePipelineState.threadExecutionWidth
+//        NSLog("threadExecutionWidth: %d", differenceThreadExecutionWidth)
+//        let differenceThreadsPerGroup = MTLSize(width: differenceThreadExecutionWidth, height: 1, depth: 1)
+//
+//        let differenceNumThreadGroups = MTLSize(width: /*1*/(length/4/*+threadExecutionWidth*/)/differenceThreadExecutionWidth, height: 1, depth: 1)
+//        differenceComputeCommandEncoder.dispatchThreadgroups(differenceNumThreadGroups, threadsPerThreadgroup: differenceThreadsPerGroup)
+//        differenceComputeCommandEncoder.endEncoding()
+//
+//        commandBuffer.commit()
+//        commandBuffer.waitUntilCompleted()
+//
+//
+//
+//        let maxNumThreads = 128
+//
+//        guard let maxValueBuffer = device.makeBuffer(length: maxNumThreads, options: .storageModeShared) else {
+//            NSLog("Cannot make result buffer")
+//            return
+//        }
+//
+//        guard let maxIndexBuffer = device.makeBuffer(length: maxNumThreads*4, options: .storageModeShared) else {
+//            NSLog("Cannot make result buffer")
+//            return
+//        }
+//
+//        guard let maxFunction = self.maxFunction else {
+//            NSLog("Cannot make max function")
+//            return
+//        }
+//
+//        guard let maxCommandBuffer = commandQueue.makeCommandBuffer() else {
+//            NSLog("Cannot make command buffer")
+//            return
+//        }
+//
+//        guard let maxComputeCommandEncoder = maxCommandBuffer.makeComputeCommandEncoder() else {
+//            NSLog("Cannot make max compute command encoder")
+//            return
+//        }
+//
+//        var maxComputePipelineState: MTLComputePipelineState?
+//        do {
+//            maxComputePipelineState = try device.makeComputePipelineState(function: maxFunction)
+//        } catch {
+//            NSLog("Error making compute pipeline state")
+//            maxComputeCommandEncoder.endEncoding()
+//            return
+//        }
+//
+//        guard let maxPipelineState = maxComputePipelineState else {
+//            NSLog("No compute pipeline state")
+//            maxComputeCommandEncoder.endEncoding()
+//            return
+//        }
+//
+//        maxComputeCommandEncoder.setBuffer(diffBuffer, offset: 0, index: 0)
+//        maxComputeCommandEncoder.setBuffer(maxValueBuffer, offset: 0, index: 1)
+//        maxComputeCommandEncoder.setBuffer(maxIndexBuffer, offset: 0, index: 2)
+//        maxComputeCommandEncoder.setComputePipelineState(maxPipelineState)
+//
+//        let maxThreadExecutionWidth = maxPipelineState.threadExecutionWidth
+//        NSLog("threadExecutionWidth: %d", maxThreadExecutionWidth)
+//        let maxThreadsPerGroup = MTLSize(width: differenceThreadExecutionWidth, height: 1, depth: 1)
+//
+//        let maxNumThreadGroups = MTLSize(width: 4, height: 1, depth: 1)
+//        maxComputeCommandEncoder.dispatchThreadgroups(maxNumThreadGroups, threadsPerThreadgroup: maxThreadsPerGroup)
+//        maxComputeCommandEncoder.endEncoding()
+//
+//        maxCommandBuffer.commit()
+//        maxCommandBuffer.waitUntilCompleted()
+//
+//        var maxValue: UInt8 = 0
+//        var maxIndex = 0
+//        let maxValueArray: UnsafeMutablePointer<UInt8> = maxValueBuffer.contents().assumingMemoryBound(to: UInt8.self)
+//        let maxIndexArray: UnsafeMutablePointer<Int> = maxIndexBuffer.contents().assumingMemoryBound(to: Int.self)
+//        for i in 0..<maxNumThreads {
+//            if maxValueArray[i] > maxValue {
+//                maxValue = maxValueArray[i]
+//                maxIndex = maxIndexArray[i]
+//            }
+//        }
+//
+//        NSLog("max value: %d at index: %d", maxValue, maxIndex)
+//
+//
+//
+//    }
     
     
     var matchPreambleInitialized = false
@@ -428,29 +428,35 @@ class LightDecoder: NSObject {
     }
     
     
-    var historyBufferOdd: MTLBuffer?
-    var matchBufferOdd: MTLBuffer?
-    var dataBufferOdd: MTLBuffer?
-    var historyBufferEven: MTLBuffer?
-    var matchBufferEven: MTLBuffer?
-    var dataBufferEven: MTLBuffer?
+
+//    var historyBufferOdd: MTLBuffer?
+//    var matchBufferOdd: MTLBuffer?
+//    var dataBufferOdd: MTLBuffer?
+//    var historyBufferEven: MTLBuffer?
+//    var matchBufferEven: MTLBuffer?
+//    var dataBufferEven: MTLBuffer?
     var bufferLength = 0
-    var baselineMinBufferOdd: MTLBuffer?
-    var baselineMaxBufferOdd: MTLBuffer?
-    var baselineMinBufferEven: MTLBuffer?
-    var baselineMaxBufferEven: MTLBuffer?
+    var preambleBuffer: MTLBuffer?
+    var matchBuffer: MTLBuffer?
+    var dataBuffer: MTLBuffer?
+//    var baselineMinBufferOdd: MTLBuffer?
+//    var baselineMaxBufferOdd: MTLBuffer?
+//    var baselineMinBufferEven: MTLBuffer?
+//    var baselineMaxBufferEven: MTLBuffer?
     
     
-    var minBuffer: MTLBuffer?
-    var maxBuffer: MTLBuffer?
+//    var minBuffer: MTLBuffer?
+//    var maxBuffer: MTLBuffer?
     
-    var oddBufferArray = [MTLBuffer]()
-    var evenBufferArray = [MTLBuffer]()
+//    var oddBufferArray = [MTLBuffer]()
+//    var evenBufferArray = [MTLBuffer]()
     
-    var dataMinBufferOdd: MTLBuffer?
-    var dataMaxBufferOdd: MTLBuffer?
-    var dataMinBufferEven: MTLBuffer?
-    var dataMaxBufferEven: MTLBuffer?
+    var bufferArray = [MTLBuffer]()
+    
+//    var dataMinBufferOdd: MTLBuffer?
+//    var dataMaxBufferOdd: MTLBuffer?
+//    var dataMinBufferEven: MTLBuffer?
+//    var dataMaxBufferEven: MTLBuffer?
     
     
     func setupMatchPreamble() {
@@ -458,44 +464,62 @@ class LightDecoder: NSObject {
             NSLog("no library")
             return
         }
-        var threshold = 80
-        var preamble = 0x2A
+        var threshold = 100
+       // var preamble = 0x2A
         
         let constantValues = MTLFunctionConstantValues()
-        constantValues.setConstantValue(&threshold, type: .char, index: 0)
-        constantValues.setConstantValue(&preamble, type: .char, index: 1)
+        constantValues.setConstantValue(&threshold, type: .int, index: 0)
+   //     constantValues.setConstantValue(&preamble, type: .char, index: 1)
         do {
             matchPreambleFunction = try library.makeFunction(name: "matchPreamble", constantValues: constantValues)
-        } catch {
+        } catch MTLLibraryError.unsupported {
+            NSLog("Error creating match preamble function unsupported")
+        } catch MTLLibraryError.internal {
+            NSLog("Error creating match preamble function internal")
+        } catch MTLLibraryError.compileFailure {
+            NSLog("Error creating match preamble function compile failure")
+        } catch MTLLibraryError.compileWarning {
+            NSLog("Error creating match preamble function compile warning")
+        } catch MTLLibraryError.fileNotFound {
+            NSLog("Error creating match preamble function file not found")
+       
+            
+        } catch  {
             NSLog("Error creating match preamble function")
         }
         
         bufferLength = 1920*1440
-        historyBufferOdd = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
-        matchBufferOdd = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
-        dataBufferOdd = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
-        baselineMinBufferOdd = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
-        baselineMaxBufferOdd = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
-        
-        historyBufferEven = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
-        matchBufferEven = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
-        dataBufferEven = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
-        baselineMinBufferEven = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
-        baselineMaxBufferEven = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
-        
-        dataMinBufferOdd = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
-        dataMaxBufferOdd = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
-        dataMinBufferEven = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
-        dataMaxBufferEven = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
-        
-        self.minBuffer = device?.makeBuffer(length: bufferLength, options:.storageModeShared)
-        if let minBuffer = self.minBuffer {
-            let minArray = minBuffer.contents().assumingMemoryBound(to: UInt8.self)
-            for i in 0..<bufferLength {
-                minArray[i] = 0xFF;
-            }
-        }
-        self.maxBuffer = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
+//        historyBufferOdd = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
+//        matchBufferOdd = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
+//        dataBufferOdd = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
+//        baselineMinBufferOdd = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
+//        baselineMaxBufferOdd = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
+//
+//        historyBufferEven = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
+//        matchBufferEven = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
+//        dataBufferEven = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
+//        baselineMinBufferEven = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
+//        baselineMaxBufferEven = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
+//
+//        dataMinBufferOdd = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
+//        dataMaxBufferOdd = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
+//        dataMinBufferEven = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
+//        dataMaxBufferEven = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
+//
+//        self.minBuffer = device?.makeBuffer(length: bufferLength, options:.storageModeShared)
+//        if let minBuffer = self.minBuffer {
+//            let minArray = minBuffer.contents().assumingMemoryBound(to: UInt8.self)
+//            for i in 0..<bufferLength {
+//                minArray[i] = 0xFF;
+//            }
+//        }
+//        self.maxBuffer = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
+        let  preambleArray: [Int] = [1, 1, 1, -1, -1, -1, 1, 1, -1, -1, 1, -1]
+        let preamblePtr: UnsafeMutablePointer<Int> = UnsafeMutablePointer(mutating: preambleArray)
+        preambleBuffer = device?.makeBuffer(bytes: preamblePtr, length: 12*4, options: .storageModeShared)
+      //  preambleBuffer = device?.makeBuffer(length: 12*8, options: .storageModeShared)
+        dataBuffer = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
+        matchBuffer = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
         
         
     }
@@ -507,92 +531,119 @@ class LightDecoder: NSObject {
             return
         }
         
-        var hBuffer: MTLBuffer?
-        var mBuffer: MTLBuffer?
-        var dBuffer: MTLBuffer?
-        var baselineMinBufferOpt: MTLBuffer?
-        var baselineMaxBufferOpt: MTLBuffer?
+        
+        bufferArray.append(imageBuffer)
+        while bufferArray.count > 12 {
+            bufferArray.remove(at: 0)
+        }
+        if bufferArray.count < 12 {
+            return
+        }
+        
+//        var hBuffer: MTLBuffer?
+//        var mBuffer: MTLBuffer?
+//        var dBuffer: MTLBuffer?
+//        var baselineMinBufferOpt: MTLBuffer?
+//        var baselineMaxBufferOpt: MTLBuffer?
         var prevBuffer1: MTLBuffer?
         var prevBuffer2: MTLBuffer?
         var prevBuffer3: MTLBuffer?
         var prevBuffer4: MTLBuffer?
         var prevBuffer5: MTLBuffer?
+        var prevBuffer6: MTLBuffer?
+        var prevBuffer7: MTLBuffer?
+        var prevBuffer8: MTLBuffer?
+        var prevBuffer9: MTLBuffer?
+        var prevBuffer10: MTLBuffer?
+        var prevBuffer11: MTLBuffer?
         
-        var dataMinBufferOpt: MTLBuffer?
-        var dataMaxBufferOpt: MTLBuffer?
+        prevBuffer1 = bufferArray[10]
+        prevBuffer2 = bufferArray[9]
+        prevBuffer3 = bufferArray[8]
+        prevBuffer4 = bufferArray[7]
+        prevBuffer5 = bufferArray[6]
+        prevBuffer6 = bufferArray[5]
+        prevBuffer7 = bufferArray[4]
+        prevBuffer8 = bufferArray[3]
+        prevBuffer9 = bufferArray[2]
+        prevBuffer10 = bufferArray[1]
+        prevBuffer11 = bufferArray[0]
         
-        if evenFrame != true {//odd
-            hBuffer = self.historyBufferOdd
-            mBuffer = self.matchBufferOdd
-            dBuffer = self.dataBufferOdd
-            baselineMinBufferOpt = self.baselineMinBufferOdd
-            baselineMaxBufferOpt = self.baselineMaxBufferOdd
-            
-            oddBufferArray.append(imageBuffer)
-            while oddBufferArray.count > 6 {
-                oddBufferArray.remove(at: 0)
-            }
-            if oddBufferArray.count < 6 {
-                return
-            }
-            prevBuffer1 = oddBufferArray[4]
-            prevBuffer2 = oddBufferArray[3]
-            prevBuffer3 = oddBufferArray[2]
-            prevBuffer4 = oddBufferArray[1]
-            prevBuffer5 = oddBufferArray[0]
-            
-            dataMinBufferOpt = self.dataMinBufferOdd
-            dataMaxBufferOpt = self.dataMaxBufferOdd
-        } else {
-            hBuffer = self.historyBufferEven
-            mBuffer = self.matchBufferEven
-            dBuffer = self.dataBufferEven
-            baselineMinBufferOpt = self.baselineMinBufferEven
-            baselineMaxBufferOpt = self.baselineMaxBufferEven
-            
-            evenBufferArray.append(imageBuffer)
-            while evenBufferArray.count > 6 {
-                evenBufferArray.remove(at: 0)
-            }
-            if evenBufferArray.count < 6 {
-                return
-            }
-            
-            prevBuffer1 = evenBufferArray[4]
-            prevBuffer2 = evenBufferArray[3]
-            prevBuffer3 = evenBufferArray[2]
-            prevBuffer4 = evenBufferArray[1]
-            prevBuffer5 = evenBufferArray[0]
-            
-            dataMinBufferOpt = self.dataMinBufferEven
-            dataMaxBufferOpt = self.dataMaxBufferEven
-            
-        }
+//        var dataMinBufferOpt: MTLBuffer?
+//        var dataMaxBufferOpt: MTLBuffer?
         
-        guard let historyBuffer = hBuffer else {
-            NSLog("no history buffer")
-            return
-        }
+//        if evenFrame != true {//odd
+//            hBuffer = self.historyBufferOdd
+//            mBuffer = self.matchBufferOdd
+//            dBuffer = self.dataBufferOdd
+//            baselineMinBufferOpt = self.baselineMinBufferOdd
+//            baselineMaxBufferOpt = self.baselineMaxBufferOdd
+//
+//            oddBufferArray.append(imageBuffer)
+//            while oddBufferArray.count > 6 {
+//                oddBufferArray.remove(at: 0)
+//            }
+//            if oddBufferArray.count < 6 {
+//                return
+//            }
+//            prevBuffer1 = oddBufferArray[4]
+//            prevBuffer2 = oddBufferArray[3]
+//            prevBuffer3 = oddBufferArray[2]
+//            prevBuffer4 = oddBufferArray[1]
+//            prevBuffer5 = oddBufferArray[0]
+//
+//            dataMinBufferOpt = self.dataMinBufferOdd
+//            dataMaxBufferOpt = self.dataMaxBufferOdd
+//        } else {
+//            hBuffer = self.historyBufferEven
+//            mBuffer = self.matchBufferEven
+//            dBuffer = self.dataBufferEven
+//            baselineMinBufferOpt = self.baselineMinBufferEven
+//            baselineMaxBufferOpt = self.baselineMaxBufferEven
+//
+//            evenBufferArray.append(imageBuffer)
+//            while evenBufferArray.count > 6 {
+//                evenBufferArray.remove(at: 0)
+//            }
+//            if evenBufferArray.count < 6 {
+//                return
+//            }
+//
+//            prevBuffer1 = evenBufferArray[4]
+//            prevBuffer2 = evenBufferArray[3]
+//            prevBuffer3 = evenBufferArray[2]
+//            prevBuffer4 = evenBufferArray[1]
+//            prevBuffer5 = evenBufferArray[0]
+//
+//            dataMinBufferOpt = self.dataMinBufferEven
+//            dataMaxBufferOpt = self.dataMaxBufferEven
+//
+//        }
         
-        guard let matchBuffer = mBuffer else {
+//        guard let historyBuffer = hBuffer else {
+//            NSLog("no history buffer")
+//            return
+//        }
+        
+        guard let matchBuffer = self.matchBuffer else {
             NSLog("no match buffer")
             return
         }
         
-        guard let dataBuffer = dBuffer else {
-            NSLog("no data buffer")
-            return
-        }
+//        guard let dataBuffer = dBuffer else {
+//            NSLog("no data buffer")
+//            return
+//        }
         
-        guard let baselineMinBuffer = baselineMinBufferOpt else {
-            NSLog("no baseline min buffer")
-            return
-        }
-        
-        guard let baselineMaxBuffer = baselineMaxBufferOpt else {
-            NSLog("no baseline max buffer")
-            return
-        }
+//        guard let baselineMinBuffer = baselineMinBufferOpt else {
+//            NSLog("no baseline min buffer")
+//            return
+//        }
+//
+//        guard let baselineMaxBuffer = baselineMaxBufferOpt else {
+//            NSLog("no baseline max buffer")
+//            return
+//        }
         
         guard let prevImageBuffer1 = prevBuffer1 else {
             NSLog("no prevBuffer1")
@@ -619,22 +670,52 @@ class LightDecoder: NSObject {
             return
         }
         
-        guard let dataMinBuffer = dataMinBufferOpt else {
-            NSLog("no data min buffer")
+        guard let prevImageBuffer6 = prevBuffer6 else {
+            NSLog("no prevBuffer1")
             return
         }
         
-        guard let dataMaxBuffer = dataMaxBufferOpt else {
-            NSLog("no data max buffer")
+        guard let prevImageBuffer7 = prevBuffer7 else {
+            NSLog("no prevBuffer2")
             return
         }
+        
+        guard let prevImageBuffer8 = prevBuffer8 else {
+            NSLog("no prevBuffer3")
+            return
+        }
+        
+        guard let prevImageBuffer9 = prevBuffer9 else {
+            NSLog("no prevBuffer4")
+            return
+        }
+        
+        guard let prevImageBuffer10 = prevBuffer10 else {
+            NSLog("no prevBuffer5")
+            return
+        }
+        
+        guard let prevImageBuffer11 = prevBuffer11 else {
+            NSLog("no prevBuffer5")
+            return
+        }
+        
+//        guard let dataMinBuffer = dataMinBufferOpt else {
+//            NSLog("no data min buffer")
+//            return
+//        }
+//
+//        guard let dataMaxBuffer = dataMaxBufferOpt else {
+//            NSLog("no data max buffer")
+//            return
+//        }
         
   
         
-        if imageBuffer.length != historyBuffer.length || imageBuffer.length != matchBuffer.length {
-            NSLog("buffers do not match")
-            return
-        }
+//        if imageBuffer.length != historyBuffer.length || imageBuffer.length != matchBuffer.length {
+//            NSLog("buffers do not match")
+//            return
+//        }
         let length = imageBuffer.length
         
         
@@ -649,7 +730,7 @@ class LightDecoder: NSObject {
         }
         
         guard let matchPreambleFunction = self.matchPreambleFunction else {
-            NSLog("Cannot make difference function")
+            NSLog("Cannot make match preamble function")
             return
         }
         
@@ -674,20 +755,27 @@ class LightDecoder: NSObject {
         }
         
         computeCommandEncoder.setBuffer(imageBuffer, offset: 0, index: 0)
-        computeCommandEncoder.setBuffer(historyBuffer, offset: 0, index: 1)
+        computeCommandEncoder.setBuffer(preambleBuffer, offset: 0, index: 1)
+//        computeCommandEncoder.setBuffer(historyBuffer, offset: 0, index: 1)
         computeCommandEncoder.setBuffer(matchBuffer, offset: 0, index: 2)
-        computeCommandEncoder.setBuffer(minBuffer, offset: 0, index: 3)
-        computeCommandEncoder.setBuffer(maxBuffer, offset: 0, index: 4)
-        computeCommandEncoder.setBuffer(dataBuffer, offset: 0, index: 5)
-        computeCommandEncoder.setBuffer(baselineMinBuffer, offset: 0, index: 6)
-        computeCommandEncoder.setBuffer(baselineMaxBuffer, offset: 0, index: 7)
-        computeCommandEncoder.setBuffer(prevImageBuffer1, offset: 0, index: 8)
-        computeCommandEncoder.setBuffer(prevImageBuffer2, offset: 0, index: 9)
-        computeCommandEncoder.setBuffer(prevImageBuffer3, offset: 0, index: 10)
-        computeCommandEncoder.setBuffer(prevImageBuffer4, offset: 0, index: 11)
-        computeCommandEncoder.setBuffer(prevImageBuffer5, offset: 0, index: 12)
-        computeCommandEncoder.setBuffer(dataMinBuffer, offset: 0, index: 13)
-        computeCommandEncoder.setBuffer(dataMaxBuffer, offset: 0, index: 14)
+//        computeCommandEncoder.setBuffer(minBuffer, offset: 0, index: 3)
+//        computeCommandEncoder.setBuffer(maxBuffer, offset: 0, index: 4)
+        computeCommandEncoder.setBuffer(dataBuffer, offset: 0, index: 3)
+//        computeCommandEncoder.setBuffer(baselineMinBuffer, offset: 0, index: 6)
+//        computeCommandEncoder.setBuffer(baselineMaxBuffer, offset: 0, index: 7)
+        computeCommandEncoder.setBuffer(prevImageBuffer1, offset: 0, index: 4)
+        computeCommandEncoder.setBuffer(prevImageBuffer2, offset: 0, index: 5)
+        computeCommandEncoder.setBuffer(prevImageBuffer3, offset: 0, index: 6)
+        computeCommandEncoder.setBuffer(prevImageBuffer4, offset: 0, index: 7)
+        computeCommandEncoder.setBuffer(prevImageBuffer5, offset: 0, index: 8)
+        computeCommandEncoder.setBuffer(prevImageBuffer6, offset: 0, index: 9)
+        computeCommandEncoder.setBuffer(prevImageBuffer7, offset: 0, index: 10)
+        computeCommandEncoder.setBuffer(prevImageBuffer8, offset: 0, index: 11)
+        computeCommandEncoder.setBuffer(prevImageBuffer9, offset: 0, index: 12)
+        computeCommandEncoder.setBuffer(prevImageBuffer10, offset: 0, index: 13)
+        computeCommandEncoder.setBuffer(prevImageBuffer11, offset: 0, index: 14)
+//        computeCommandEncoder.setBuffer(dataMinBuffer, offset: 0, index: 9)
+//        computeCommandEncoder.setBuffer(dataMaxBuffer, offset: 0, index: 10)
         computeCommandEncoder.setComputePipelineState(pipelineState)
         
         let threadExecutionWidth = pipelineState.threadExecutionWidth
@@ -717,88 +805,97 @@ class LightDecoder: NSObject {
         
         let length = 1920*1440
         
-        guard let dataArrayOdd = dataBufferOdd?.contents().assumingMemoryBound(to: UInt8.self) else  {
-            NSLog("no data array odd")
-            return
-        }
+//        guard let dataArrayOdd = dataBufferOdd?.contents().assumingMemoryBound(to: UInt8.self) else  {
+//            NSLog("no data array odd")
+//            return
+//        }
+//
+//        guard let baselineMinArrayOdd = self.baselineMinBufferOdd?.contents().assumingMemoryBound(to: UInt8.self) else {
+//            NSLog("no baselinMinArrayOdd")
+//            return
+//        }
+//        guard let baselineMaxArrayOdd = self.baselineMaxBufferOdd?.contents().assumingMemoryBound(to: UInt8.self) else {
+//            NSLog("no baselinMaxArrayOdd")
+//            return
+//        }
+//
+//        guard let dataMinArrayOdd = self.dataMinBufferOdd?.contents().assumingMemoryBound(to: UInt8.self) else {
+//            NSLog("no dataMaxArrayEven")
+//            return
+//        }
+//
+//        guard let dataMaxArrayOdd = self.dataMaxBufferOdd?.contents().assumingMemoryBound(to: UInt8.self) else {
+//            NSLog("no dataMaxArrayEven")
+//            return
+//        }
+//
+//
+//        guard let dataArrayEven = self.dataBufferEven?.contents().assumingMemoryBound(to: UInt8.self) else {
+//            NSLog("no dataArrayEven")
+//            return
+//        }
+//
+//        guard let baselineMinArrayEven = self.baselineMinBufferEven?.contents().assumingMemoryBound(to: UInt8.self) else {
+//            NSLog("no baselinMinArrayOdd")
+//            return
+//        }
+//        guard let baselineMaxArrayEven = self.baselineMaxBufferEven?.contents().assumingMemoryBound(to: UInt8.self) else {
+//            NSLog("no baselinMaxArrayOdd")
+//            return
+//        }
+//
+//        guard let dataMinArrayEven = self.dataMinBufferEven?.contents().assumingMemoryBound(to: UInt8.self) else {
+//            NSLog("no dataMaxArrayEven")
+//            return
+//        }
+//
+//        guard let dataMaxArrayEven = self.dataMaxBufferEven?.contents().assumingMemoryBound(to: UInt8.self) else {
+//            NSLog("no dataMaxArrayEven")
+//            return
+//        }
         
-        guard let baselineMinArrayOdd = self.baselineMinBufferOdd?.contents().assumingMemoryBound(to: UInt8.self) else {
-            NSLog("no baselinMinArrayOdd")
-            return
-        }
-        guard let baselineMaxArrayOdd = self.baselineMaxBufferOdd?.contents().assumingMemoryBound(to: UInt8.self) else {
-            NSLog("no baselinMaxArrayOdd")
-            return
-        }
-        
-        guard let dataMinArrayOdd = self.dataMinBufferOdd?.contents().assumingMemoryBound(to: UInt8.self) else {
-            NSLog("no dataMaxArrayEven")
-            return
-        }
-        
-        guard let dataMaxArrayOdd = self.dataMaxBufferOdd?.contents().assumingMemoryBound(to: UInt8.self) else {
-            NSLog("no dataMaxArrayEven")
-            return
-        }
-        
-        
-        guard let dataArrayEven = self.dataBufferEven?.contents().assumingMemoryBound(to: UInt8.self) else {
-            NSLog("no dataArrayEven")
-            return
-        }
-        
-        guard let baselineMinArrayEven = self.baselineMinBufferEven?.contents().assumingMemoryBound(to: UInt8.self) else {
-            NSLog("no baselinMinArrayOdd")
-            return
-        }
-        guard let baselineMaxArrayEven = self.baselineMaxBufferEven?.contents().assumingMemoryBound(to: UInt8.self) else {
-            NSLog("no baselinMaxArrayOdd")
-            return
-        }
-        
-        guard let dataMinArrayEven = self.dataMinBufferEven?.contents().assumingMemoryBound(to: UInt8.self) else {
-            NSLog("no dataMaxArrayEven")
-            return
-        }
-        
-        guard let dataMaxArrayEven = self.dataMaxBufferEven?.contents().assumingMemoryBound(to: UInt8.self) else {
-            NSLog("no dataMaxArrayEven")
+        guard let matchArray = self.matchBuffer?.contents().assumingMemoryBound(to: UInt8.self) else {
+            NSLog("no matchArray")
             return
         }
         
         DispatchQueue.global(qos: .userInitiated).async {
             
-            let dataImageArray = UnsafeMutablePointer<UInt8>.allocate(capacity: length)
-            let dataImageArrayNoSNR = UnsafeMutablePointer<UInt8>.allocate(capacity: length)
-            
-            var numOddMatchingData = 0
-            var numOddMatchingDataAndSnr = 0
-            var numEvenMatchingData = 0
-            var numEvenMatchingDataAndSnr = 0
+//            let dataImageArray = UnsafeMutablePointer<UInt8>.allocate(capacity: length)
+//            let dataImageArrayNoSNR = UnsafeMutablePointer<UInt8>.allocate(capacity: length)
+//
+            let matchImageArray = UnsafeMutablePointer<UInt8>.allocate(capacity: length)
+//            var numOddMatchingData = 0
+//            var numOddMatchingDataAndSnr = 0
+//            var numEvenMatchingData = 0
+//            var numEvenMatchingDataAndSnr = 0
             for i in 0..<length {
-                let snrOdd = (Double(dataMaxArrayOdd[i])-Double(dataMinArrayOdd[i])) / (Double(baselineMaxArrayOdd[i])-Double(baselineMinArrayOdd[i]))
-                
-                if dataArrayOdd[i] == 0x2A {
-                    //     NSLog("odd max: %d, min: %d, snr: %f", dataMaxArrayOdd[i], dataMinArrayOdd[i], snr)
-                    numOddMatchingData += 1
-                    if snrOdd > 10 && snrOdd.isFinite {
-                        numOddMatchingDataAndSnr += 1
-                        dataImageArray[i] = 0xFF
-                    } else {
-                        dataImageArrayNoSNR[i] = 0xFF
-                    }
-                }
-                
-                let snrEven = (Double(dataMaxArrayEven[i])-Double(dataMinArrayEven[i])) / (Double(baselineMaxArrayEven[i])-Double(baselineMinArrayEven[i]))
-                if dataArrayEven[i] == 0x2A {
-                    //     NSLog("odd max: %d, min: %d, snr: %f", dataMaxArrayOdd[i], dataMinArrayOdd[i], snr)
-                    numEvenMatchingData += 1
-                    if snrEven > 10 && snrEven.isFinite {
-                        numEvenMatchingDataAndSnr += 1
-                        dataImageArray[i] = 0xFF
-                    } else {
-                        dataImageArrayNoSNR[i] = 0xFF
-                    }
+//                let snrOdd = (Double(dataMaxArrayOdd[i])-Double(dataMinArrayOdd[i])) / (Double(baselineMaxArrayOdd[i])-Double(baselineMinArrayOdd[i]))
+//
+//                if dataArrayOdd[i] == 0x2A {
+//                    //     NSLog("odd max: %d, min: %d, snr: %f", dataMaxArrayOdd[i], dataMinArrayOdd[i], snr)
+//                    numOddMatchingData += 1
+//                    if snrOdd > 10 && snrOdd.isFinite {
+//                        numOddMatchingDataAndSnr += 1
+//                        dataImageArray[i] = 0xFF
+//                    } else {
+//                        dataImageArrayNoSNR[i] = 0xFF
+//                    }
+//                }
+//
+//                let snrEven = (Double(dataMaxArrayEven[i])-Double(dataMinArrayEven[i])) / (Double(baselineMaxArrayEven[i])-Double(baselineMinArrayEven[i]))
+//                if dataArrayEven[i] == 0x2A {
+//                    //     NSLog("odd max: %d, min: %d, snr: %f", dataMaxArrayOdd[i], dataMinArrayOdd[i], snr)
+//                    numEvenMatchingData += 1
+//                    if snrEven > 10 && snrEven.isFinite {
+//                        numEvenMatchingDataAndSnr += 1
+//                        dataImageArray[i] = 0xFF
+//                    } else {
+//                        dataImageArrayNoSNR[i] = 0xFF
+//                    }
+//                }
+                if matchArray[i] != 0 {
+                    matchImageArray[i] = 0xFF;
                 }
                 
             }
@@ -806,7 +903,7 @@ class LightDecoder: NSObject {
             let rotatedImageArray = UnsafeMutablePointer<UInt8>.allocate(capacity: length)
             for row in 0..<1440 {
                 for column in 0..<1920 {
-                    rotatedImageArray[column*1440 + (1439-row)] = dataImageArray[row*1920+column]
+                    rotatedImageArray[column*1440 + (1439-row)] = matchImageArray[row*1920+column]
                 }
             }
             
@@ -816,8 +913,9 @@ class LightDecoder: NSObject {
                 }
             }
 
-            free(dataImageArray)
-            free(dataImageArrayNoSNR)
+//            free(dataImageArray)
+//            free(dataImageArrayNoSNR)
+            free(matchImageArray)
             free(rotatedImageArray)
             
             
@@ -832,231 +930,232 @@ class LightDecoder: NSObject {
     
     
     
-    func evaluateResults() {
-        guard let matchBufferOdd = self.matchBufferOdd else {
-            NSLog("no match buffer")
-            return
-        }
-        
-        let length = 1920*1440
-        
-        let matchArrayOdd = matchBufferOdd.contents().assumingMemoryBound(to: UInt8.self)
-        var numberOfPreambleMatchesOdd = 0
-        for i in 0..<bufferLength {
-            if matchArrayOdd[i] == 1 {
-                numberOfPreambleMatchesOdd += 1
-            }
-        }
-//        for i in 0..<100 {
-//            NSLog("his odd 0x%x", matchArrayOdd[i])
-//        }
-
-        
-        guard let minArray = self.minBuffer?.contents().assumingMemoryBound(to: UInt8.self) else {
-            NSLog("no minArray")
-            return
-        }
-        let minImage = UIImage.image(buffer: minArray, length: 1920*1440, rowWidth: 1920)
-        
-        guard let maxArray = self.maxBuffer?.contents().assumingMemoryBound(to: UInt8.self) else {
-            NSLog("no maxArray")
-            return
-        }
-        let maxImage = UIImage.image(buffer: maxArray, length: 1920*1440, rowWidth: 1920)
-        
-        var historyBufferImageOdd: UIImage?
-        var historyBufferImageEven: UIImage?
-        
-        guard let historyArrayOdd = self.historyBufferOdd?.contents().assumingMemoryBound(to: UInt8.self) else {
-            NSLog("no history array odd")
-            return;
-        }
-            historyBufferImageOdd = UIImage.image(buffer: historyArrayOdd, length: length, rowWidth: 1920)
-        
-        if let historyArrayEven = self.historyBufferEven?.contents().assumingMemoryBound(to: UInt8.self) {
-            historyBufferImageEven = UIImage.image(buffer: historyArrayEven, length: length, rowWidth: 1920)
-        }
-        
-        for i in 0..<1920 {
-            NSLog(" possible preamble: 0x%x", historyArrayOdd[1920*720+i])
-        }
-        
-        
-        
-        guard let matchBufferEven = self.matchBufferEven else {
-            NSLog("no match buffer")
-            return
-        }
-        let matchArrayEven = matchBufferEven.contents().assumingMemoryBound(to: UInt8.self)
-        var numberOfPreambleMatchesEven = 0
-        for i in 0..<bufferLength {
-            if matchArrayEven[i] == 1 {
-                numberOfPreambleMatchesEven += 1
-            }
-        }
-        if let maxArray = self.maxBuffer?.contents().assumingMemoryBound(to: UInt8.self), let minArray = self.minBuffer?.contents().assumingMemoryBound(to: UInt8.self) {
-            for i in 0..<100 {
-          //      NSLog("max: %d", maxArray[i])
-            }
-            for i in 0..<100 {
-         //       NSLog("min: %d", minArray[i])
-            }
-        }
-        
-
-        
-        var matchImageOdd: UIImage?
-        var matchImageEven: UIImage?
-        if let matchArrayOdd = self.matchBufferOdd?.contents().assumingMemoryBound(to: UInt8.self) {
-            var matchImageArrayOdd = UnsafeMutablePointer<UInt8>.allocate(capacity: length)
-            for i in 0..<length {
-                if matchArrayOdd[i] != 0 {
-                    matchImageArrayOdd[i] = 0xFF
-                }
-            }
-            matchImageOdd = UIImage.image(buffer: matchImageArrayOdd, length: length, rowWidth: 1920)
-        }
-        
-        if let matchArrayEven = self.matchBufferEven?.contents().assumingMemoryBound(to: UInt8.self) {
-            var matchImageArrayEven = UnsafeMutablePointer<UInt8>.allocate(capacity: length)
-            for i in 0..<length {
-                if matchArrayEven[i] != 0 {
-                    matchImageArrayEven[i] = 0xFF
-                }
-            }
-            matchImageEven = UIImage.image(buffer: matchImageArrayEven, length: length, rowWidth: 1920)
-        }
-        
-        var dataImageOdd: UIImage?
-        var dataImageEven: UIImage?
-        
-        guard let dataArrayOdd = self.dataBufferOdd?.contents().assumingMemoryBound(to: UInt8.self) else {
-            NSLog("no dataArrayOdd")
-            return
-        }
-        
-
-        
-        guard let baselineMinArrayOdd = self.baselineMinBufferOdd?.contents().assumingMemoryBound(to: UInt8.self) else {
-            NSLog("no baselinMinArrayOdd")
-            return
-        }
-        guard let baselineMaxArrayOdd = self.baselineMaxBufferOdd?.contents().assumingMemoryBound(to: UInt8.self) else {
-            NSLog("no baselinMaxArrayOdd")
-            return
-        }
-        
-        guard let dataMinArrayOdd = self.dataMinBufferOdd?.contents().assumingMemoryBound(to: UInt8.self) else {
-            NSLog("no dataMaxArrayEven")
-            return
-        }
-        
-        guard let dataMaxArrayOdd = self.dataMaxBufferOdd?.contents().assumingMemoryBound(to: UInt8.self) else {
-            NSLog("no dataMaxArrayEven")
-            return
-        }
-        
-        let dataImageArrayOdd = UnsafeMutablePointer<UInt8>.allocate(capacity: length)
-        let dataImageArrayOddNoSNR = UnsafeMutablePointer<UInt8>.allocate(capacity: length)
-        
-        var numOddMatchingData = 0
-        var numOddMatchingDataAndSnr = 0
-        for i in 0..<length {
-            let snr = (Double(dataMaxArrayOdd[i])-Double(dataMinArrayOdd[i])) / (Double(baselineMaxArrayOdd[i])-Double(baselineMinArrayOdd[i]))
-
-            if dataArrayOdd[i] == 0x2A {
-           //     NSLog("odd max: %d, min: %d, snr: %f", dataMaxArrayOdd[i], dataMinArrayOdd[i], snr)
-                numOddMatchingData += 1
-                if snr > 10 && snr.isFinite {
-                    numOddMatchingDataAndSnr += 1
-                    dataImageArrayOdd[i] = 0xFF
-                } else {
-                    dataImageArrayOddNoSNR[i] = 0xFF
-                }
-            }
-        }
-        
-        for i in 0..<200 {
-            NSLog("data min: %d", dataMinArrayOdd[i])
-            NSLog("data max: %d", dataMaxArrayOdd[i])
-        }
-        
-        dataImageOdd = UIImage.image(buffer: dataImageArrayOdd, length: length, rowWidth: 1920)
-
-        
-        
-        guard let dataArrayEven = self.dataBufferEven?.contents().assumingMemoryBound(to: UInt8.self) else {
-            NSLog("no dataArrayEven")
-            return
-        }
-        
-        guard let baselineMinArrayEven = self.baselineMinBufferEven?.contents().assumingMemoryBound(to: UInt8.self) else {
-            NSLog("no baselinMinArrayOdd")
-            return
-        }
-        guard let baselineMaxArrayEven = self.baselineMaxBufferEven?.contents().assumingMemoryBound(to: UInt8.self) else {
-            NSLog("no baselinMaxArrayOdd")
-            return
-        }
-        
-        guard let dataMinArrayEven = self.dataMinBufferEven?.contents().assumingMemoryBound(to: UInt8.self) else {
-            NSLog("no dataMaxArrayEven")
-            return
-        }
-        
-        guard let dataMaxArrayEven = self.dataMaxBufferEven?.contents().assumingMemoryBound(to: UInt8.self) else {
-            NSLog("no dataMaxArrayEven")
-            return
-        }
-        
-        var numEvenMatchingData = 0
-        var numEvenMatchingDataAndSnr = 0
-        let dataImageArrayEven = UnsafeMutablePointer<UInt8>.allocate(capacity: length)
-        let dataImageArrayEvenNoSNR = UnsafeMutablePointer<UInt8>.allocate(capacity: length)
-        for i in 0..<length {
-            let snr = (Double(dataMaxArrayEven[i])-Double(dataMinArrayEven[i])) / (Double(baselineMaxArrayEven[i])-Double(baselineMinArrayEven[i]))
-
-            if dataArrayEven[i] == 0x2A {
-             //   NSLog("even max: %d, min: %d, snr: %f", dataMaxArrayEven[i], dataMinArrayEven[i], snr)
-                numEvenMatchingData += 1
-                if snr > 10 && snr.isFinite {
-                    numEvenMatchingDataAndSnr += 1
-                    dataImageArrayEven[i] = 0xFF
-                } else {
-                    dataImageArrayEvenNoSNR[i] = 0xFF;
-                }
-            }
-        }
-        dataImageEven = UIImage.image(buffer: dataImageArrayEven, length: length, rowWidth: 1920)
-     
-        NSLog("number of preamble matches odd: %d", numberOfPreambleMatchesOdd)
-        NSLog("num odd matching data: %d", numOddMatchingData)
-        NSLog("num odd matching data and snr: %d", numOddMatchingDataAndSnr)
-        NSLog("number of preamble matches even: %d", numberOfPreambleMatchesEven)
-        NSLog("num even matching data: %d", numEvenMatchingData)
-        NSLog("num even matching data and snr: %d", numEvenMatchingDataAndSnr)
-        
-        
-        let dataImageArray = UnsafeMutablePointer<UInt8>.allocate(capacity: length)
-        for i in 0..<length {
-            dataImageArray[i] = dataImageArrayOdd[i] | dataImageArrayEven[i]
-        }
-        let dataImage = UIImage.image(buffer: dataImageArray, length: length, rowWidth: 1920)
-        
-        let dataImageArrayNoSNR = UnsafeMutablePointer<UInt8>.allocate(capacity: length)
-        for i in 0..<length {
-            dataImageArrayNoSNR[i] = dataImageArrayOddNoSNR[i] | dataImageArrayEvenNoSNR[i]
-        }
-        let dataImageNoSNR = UIImage.colorImage(buffer: dataImageArrayNoSNR, length: length, rowWidth: 1920)
-        
-        
-
-        
-        
-        
-
-        
+   func evaluateResults() {
     }
+//        guard let matchBufferOdd = self.matchBufferOdd else {
+//            NSLog("no match buffer")
+//            return
+//        }
+//
+//        let length = 1920*1440
+//
+//        let matchArrayOdd = matchBufferOdd.contents().assumingMemoryBound(to: UInt8.self)
+//        var numberOfPreambleMatchesOdd = 0
+//        for i in 0..<bufferLength {
+//            if matchArrayOdd[i] == 1 {
+//                numberOfPreambleMatchesOdd += 1
+//            }
+//        }
+////        for i in 0..<100 {
+////            NSLog("his odd 0x%x", matchArrayOdd[i])
+////        }
+//
+//
+//        guard let minArray = self.minBuffer?.contents().assumingMemoryBound(to: UInt8.self) else {
+//            NSLog("no minArray")
+//            return
+//        }
+//        let minImage = UIImage.image(buffer: minArray, length: 1920*1440, rowWidth: 1920)
+//
+//        guard let maxArray = self.maxBuffer?.contents().assumingMemoryBound(to: UInt8.self) else {
+//            NSLog("no maxArray")
+//            return
+//        }
+//        let maxImage = UIImage.image(buffer: maxArray, length: 1920*1440, rowWidth: 1920)
+//
+//        var historyBufferImageOdd: UIImage?
+//        var historyBufferImageEven: UIImage?
+//
+//        guard let historyArrayOdd = self.historyBufferOdd?.contents().assumingMemoryBound(to: UInt8.self) else {
+//            NSLog("no history array odd")
+//            return;
+//        }
+//            historyBufferImageOdd = UIImage.image(buffer: historyArrayOdd, length: length, rowWidth: 1920)
+//
+//        if let historyArrayEven = self.historyBufferEven?.contents().assumingMemoryBound(to: UInt8.self) {
+//            historyBufferImageEven = UIImage.image(buffer: historyArrayEven, length: length, rowWidth: 1920)
+//        }
+//
+//        for i in 0..<1920 {
+//            NSLog(" possible preamble: 0x%x", historyArrayOdd[1920*720+i])
+//        }
+//
+//
+//
+//        guard let matchBufferEven = self.matchBufferEven else {
+//            NSLog("no match buffer")
+//            return
+//        }
+//        let matchArrayEven = matchBufferEven.contents().assumingMemoryBound(to: UInt8.self)
+//        var numberOfPreambleMatchesEven = 0
+//        for i in 0..<bufferLength {
+//            if matchArrayEven[i] == 1 {
+//                numberOfPreambleMatchesEven += 1
+//            }
+//        }
+//        if let maxArray = self.maxBuffer?.contents().assumingMemoryBound(to: UInt8.self), let minArray = self.minBuffer?.contents().assumingMemoryBound(to: UInt8.self) {
+//            for i in 0..<100 {
+//          //      NSLog("max: %d", maxArray[i])
+//            }
+//            for i in 0..<100 {
+//         //       NSLog("min: %d", minArray[i])
+//            }
+//        }
+//
+//
+//
+//        var matchImageOdd: UIImage?
+//        var matchImageEven: UIImage?
+//        if let matchArrayOdd = self.matchBufferOdd?.contents().assumingMemoryBound(to: UInt8.self) {
+//            var matchImageArrayOdd = UnsafeMutablePointer<UInt8>.allocate(capacity: length)
+//            for i in 0..<length {
+//                if matchArrayOdd[i] != 0 {
+//                    matchImageArrayOdd[i] = 0xFF
+//                }
+//            }
+//            matchImageOdd = UIImage.image(buffer: matchImageArrayOdd, length: length, rowWidth: 1920)
+//        }
+//
+//        if let matchArrayEven = self.matchBufferEven?.contents().assumingMemoryBound(to: UInt8.self) {
+//            var matchImageArrayEven = UnsafeMutablePointer<UInt8>.allocate(capacity: length)
+//            for i in 0..<length {
+//                if matchArrayEven[i] != 0 {
+//                    matchImageArrayEven[i] = 0xFF
+//                }
+//            }
+//            matchImageEven = UIImage.image(buffer: matchImageArrayEven, length: length, rowWidth: 1920)
+//        }
+//
+//        var dataImageOdd: UIImage?
+//        var dataImageEven: UIImage?
+//
+//        guard let dataArrayOdd = self.dataBufferOdd?.contents().assumingMemoryBound(to: UInt8.self) else {
+//            NSLog("no dataArrayOdd")
+//            return
+//        }
+//
+//
+//
+//        guard let baselineMinArrayOdd = self.baselineMinBufferOdd?.contents().assumingMemoryBound(to: UInt8.self) else {
+//            NSLog("no baselinMinArrayOdd")
+//            return
+//        }
+//        guard let baselineMaxArrayOdd = self.baselineMaxBufferOdd?.contents().assumingMemoryBound(to: UInt8.self) else {
+//            NSLog("no baselinMaxArrayOdd")
+//            return
+//        }
+//
+//        guard let dataMinArrayOdd = self.dataMinBufferOdd?.contents().assumingMemoryBound(to: UInt8.self) else {
+//            NSLog("no dataMaxArrayEven")
+//            return
+//        }
+//
+//        guard let dataMaxArrayOdd = self.dataMaxBufferOdd?.contents().assumingMemoryBound(to: UInt8.self) else {
+//            NSLog("no dataMaxArrayEven")
+//            return
+//        }
+//
+//        let dataImageArrayOdd = UnsafeMutablePointer<UInt8>.allocate(capacity: length)
+//        let dataImageArrayOddNoSNR = UnsafeMutablePointer<UInt8>.allocate(capacity: length)
+//
+//        var numOddMatchingData = 0
+//        var numOddMatchingDataAndSnr = 0
+//        for i in 0..<length {
+//            let snr = (Double(dataMaxArrayOdd[i])-Double(dataMinArrayOdd[i])) / (Double(baselineMaxArrayOdd[i])-Double(baselineMinArrayOdd[i]))
+//
+//            if dataArrayOdd[i] == 0x2A {
+//           //     NSLog("odd max: %d, min: %d, snr: %f", dataMaxArrayOdd[i], dataMinArrayOdd[i], snr)
+//                numOddMatchingData += 1
+//                if snr > 10 && snr.isFinite {
+//                    numOddMatchingDataAndSnr += 1
+//                    dataImageArrayOdd[i] = 0xFF
+//                } else {
+//                    dataImageArrayOddNoSNR[i] = 0xFF
+//                }
+//            }
+//        }
+//
+//        for i in 0..<200 {
+//            NSLog("data min: %d", dataMinArrayOdd[i])
+//            NSLog("data max: %d", dataMaxArrayOdd[i])
+//        }
+//
+//        dataImageOdd = UIImage.image(buffer: dataImageArrayOdd, length: length, rowWidth: 1920)
+//
+//
+//
+//        guard let dataArrayEven = self.dataBufferEven?.contents().assumingMemoryBound(to: UInt8.self) else {
+//            NSLog("no dataArrayEven")
+//            return
+//        }
+//
+//        guard let baselineMinArrayEven = self.baselineMinBufferEven?.contents().assumingMemoryBound(to: UInt8.self) else {
+//            NSLog("no baselinMinArrayOdd")
+//            return
+//        }
+//        guard let baselineMaxArrayEven = self.baselineMaxBufferEven?.contents().assumingMemoryBound(to: UInt8.self) else {
+//            NSLog("no baselinMaxArrayOdd")
+//            return
+//        }
+//
+//        guard let dataMinArrayEven = self.dataMinBufferEven?.contents().assumingMemoryBound(to: UInt8.self) else {
+//            NSLog("no dataMaxArrayEven")
+//            return
+//        }
+//
+//        guard let dataMaxArrayEven = self.dataMaxBufferEven?.contents().assumingMemoryBound(to: UInt8.self) else {
+//            NSLog("no dataMaxArrayEven")
+//            return
+//        }
+//
+//        var numEvenMatchingData = 0
+//        var numEvenMatchingDataAndSnr = 0
+//        let dataImageArrayEven = UnsafeMutablePointer<UInt8>.allocate(capacity: length)
+//        let dataImageArrayEvenNoSNR = UnsafeMutablePointer<UInt8>.allocate(capacity: length)
+//        for i in 0..<length {
+//            let snr = (Double(dataMaxArrayEven[i])-Double(dataMinArrayEven[i])) / (Double(baselineMaxArrayEven[i])-Double(baselineMinArrayEven[i]))
+//
+//            if dataArrayEven[i] == 0x2A {
+//             //   NSLog("even max: %d, min: %d, snr: %f", dataMaxArrayEven[i], dataMinArrayEven[i], snr)
+//                numEvenMatchingData += 1
+//                if snr > 10 && snr.isFinite {
+//                    numEvenMatchingDataAndSnr += 1
+//                    dataImageArrayEven[i] = 0xFF
+//                } else {
+//                    dataImageArrayEvenNoSNR[i] = 0xFF;
+//                }
+//            }
+//        }
+//        dataImageEven = UIImage.image(buffer: dataImageArrayEven, length: length, rowWidth: 1920)
+//
+//        NSLog("number of preamble matches odd: %d", numberOfPreambleMatchesOdd)
+//        NSLog("num odd matching data: %d", numOddMatchingData)
+//        NSLog("num odd matching data and snr: %d", numOddMatchingDataAndSnr)
+//        NSLog("number of preamble matches even: %d", numberOfPreambleMatchesEven)
+//        NSLog("num even matching data: %d", numEvenMatchingData)
+//        NSLog("num even matching data and snr: %d", numEvenMatchingDataAndSnr)
+//
+//
+//        let dataImageArray = UnsafeMutablePointer<UInt8>.allocate(capacity: length)
+//        for i in 0..<length {
+//            dataImageArray[i] = dataImageArrayOdd[i] | dataImageArrayEven[i]
+//        }
+//        let dataImage = UIImage.image(buffer: dataImageArray, length: length, rowWidth: 1920)
+//
+//        let dataImageArrayNoSNR = UnsafeMutablePointer<UInt8>.allocate(capacity: length)
+//        for i in 0..<length {
+//            dataImageArrayNoSNR[i] = dataImageArrayOddNoSNR[i] | dataImageArrayEvenNoSNR[i]
+//        }
+//        let dataImageNoSNR = UIImage.colorImage(buffer: dataImageArrayNoSNR, length: length, rowWidth: 1920)
+//
+//
+//
+//
+//
+//
+//
+//
+//    }
     
     
     
