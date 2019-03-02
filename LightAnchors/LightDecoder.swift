@@ -424,7 +424,7 @@ class LightDecoder: NSObject {
         matchPreamble(imageBuffer: imageBuffer)
         let end = Date().timeIntervalSince1970
 // Adwait
-//        NSLog("decode runtime: %f", end-start)
+        NSLog("decode runtime: %f", end-start)
         decoding -= 1
 
     }
@@ -439,6 +439,7 @@ class LightDecoder: NSObject {
 //    var dataBufferEven: MTLBuffer?
     var bufferLength = 0
     var preambleBuffer: MTLBuffer?
+    var preambleBinaryBuffer: MTLBuffer?
     var matchBuffer: MTLBuffer?
     var dataBuffer: MTLBuffer?
 //    var baselineMinBufferOdd: MTLBuffer?
@@ -459,14 +460,14 @@ class LightDecoder: NSObject {
 //    var dataMaxBufferOdd: MTLBuffer?
 //    var dataMinBufferEven: MTLBuffer?
 //    var dataMaxBufferEven: MTLBuffer?
-    
+     var threshold = 200
     
     func setupMatchPreamble() {
         guard let library = self.library else {
             NSLog("no library")
             return
         }
-        var threshold = 200
+       
        // var preamble = 0x2A
         
         let constantValues = MTLFunctionConstantValues()
@@ -523,6 +524,9 @@ class LightDecoder: NSObject {
         dataBuffer = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
         matchBuffer = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
         
+        let preambleBinaryArray: [UInt8] = [1,1,1,0,0,0,1,1,0,0,1,0]
+        let preambleBinaryPtr: UnsafeMutablePointer<UInt8> = UnsafeMutablePointer(mutating: preambleBinaryArray)
+        preambleBinaryBuffer = device?.makeBuffer(bytes: preambleBinaryPtr, length: 12, options: .storageModeShared)
         
     }
     
@@ -776,6 +780,7 @@ class LightDecoder: NSObject {
         computeCommandEncoder.setBuffer(prevImageBuffer9, offset: 0, index: 12)
         computeCommandEncoder.setBuffer(prevImageBuffer10, offset: 0, index: 13)
         computeCommandEncoder.setBuffer(prevImageBuffer11, offset: 0, index: 14)
+        computeCommandEncoder.setBuffer(preambleBinaryBuffer, offset: 0, index: 15)
 //        computeCommandEncoder.setBuffer(dataMinBuffer, offset: 0, index: 9)
 //        computeCommandEncoder.setBuffer(dataMaxBuffer, offset: 0, index: 10)
         computeCommandEncoder.setComputePipelineState(pipelineState)

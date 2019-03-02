@@ -46,6 +46,7 @@ kernel void matchPreamble(
                           const device uchar4 *prevImage9 [[ buffer(12) ]],
                           const device uchar4 *prevImage10 [[ buffer(13) ]],
                           const device uchar4 *prevImage11 [[ buffer(14) ]],
+                          const device uchar4 *preambleBinary [[ buffer(15) ]],
 //                          device uchar4 *dataMinBuffer [[ buffer(20) ]],
 //                          device uchar4 *dataMaxBuffer [[ buffer(21) ]],
                           uint id [[ thread_position_in_grid ]]
@@ -53,29 +54,55 @@ kernel void matchPreamble(
     
     if (matchBuffer[id][0] == 0 && matchBuffer[id][1] == 0 && matchBuffer[id][2] == 0 && matchBuffer[id][3] == 0) {
     
-    int4 prevPixel11 = (int4)prevImage11[id];
-    int4 prevPixel10 = (int4)prevImage10[id];
-    int4 prevPixel9 = (int4)prevImage9[id];
-    int4 prevPixel8 = (int4)prevImage8[id];
-    int4 prevPixel7 = (int4)prevImage7[id];
-    int4 prevPixel6 = (int4)prevImage6[id];
-    int4 prevPixel5 = (int4)prevImage5[id];
-    int4 prevPixel4 = (int4)prevImage4[id];
-    int4 prevPixel3 = (int4)prevImage3[id];
-    int4 prevPixel2 = (int4)prevImage2[id];
-    int4 prevPixel1 = (int4)prevImage1[id];
-    int4 nowPixel = (int4)image[id];
+        int4 pixelArray[12];
+        
+        pixelArray[11] = (int4)prevImage11[id];
+        pixelArray[10] = (int4)prevImage10[id];
+        pixelArray[9] = (int4)prevImage9[id];
+        pixelArray[8] = (int4)prevImage8[id];
+        pixelArray[7] = (int4)prevImage7[id];
+        pixelArray[6] = (int4)prevImage6[id];
+        pixelArray[5] = (int4)prevImage5[id];
+        pixelArray[4] = (int4)prevImage4[id];
+        pixelArray[3] = (int4)prevImage3[id];
+        pixelArray[2] = (int4)prevImage2[id];
+        pixelArray[1] = (int4)prevImage1[id];
+        pixelArray[0] = (int4)image[id];
     
-    int4 avg = (prevPixel11 + prevPixel10 + prevPixel9 + prevPixel8 + prevPixel7 + prevPixel6 + prevPixel5 + prevPixel4 + prevPixel3 + prevPixel2 + prevPixel1 + nowPixel) / NUM_PREAMBLE_BITS;
-    
-    
-    int4 firstHalf = preamble[0]*(prevPixel11-avg) + preamble[1]*(prevPixel10-avg) + preamble[2]*(prevPixel9-avg) + preamble[3]*(prevPixel8-avg) + preamble[4]*(prevPixel7-avg) + preamble[5]*(prevPixel6-avg);
-    int4 secondHalf = preamble[6]*(prevPixel5-avg) + preamble[7]*(prevPixel4-avg) + preamble[8]*(prevPixel3-avg) + preamble[9]*(prevPixel2-avg) + preamble[10]*(prevPixel1-avg) + preamble[11]*(nowPixel-avg);
-    
-    int4 convolution = firstHalf + secondHalf;
-    
-    matchBuffer[id] = (uchar4)(convolution>convolutionThreshold || matchBuffer[id] != 0) ;
-//    matchBuffer[id] = (uchar4)convolution/12;
+        int4 sum = 0;
+        for (int i=0; i<NUM_PREAMBLE_BITS; i++) {
+            sum = sum + pixelArray[i];
+        }
+        int4 avg = sum/NUM_PREAMBLE_BITS;
+
+        int4 convolution = 0;
+        for (int i=0; i<NUM_PREAMBLE_BITS; i++) {
+            convolution = convolution + preamble[i]*(pixelArray[NUM_PREAMBLE_BITS-1-i] - avg);
+        }
+
+        uchar4 match = (uchar4)(convolution>convolutionThreshold);
+        
+        uchar4 maxValue = 0;
+        uchar4 minValue = 0xFF;
+        uchar4 threshold = 0;
+        if (match[0] != 0 || match[1] != 0 || match[2] != 0 || match[3] != 0) {
+            for (int i=0; i< NUM_PREAMBLE_BITS; i++) {
+                maxValue = max(maxValue, (uchar4)pixelArray[i]);
+                minValue = min(minValue, (uchar4)pixelArray[i]);
+            }
+            threshold = maxValue/2 + minValue/2;
+            
+            for (int i=0; i<NUM_PREAMBLE_BITS; i++) {
+                uchar4 bitMatch = (uchar4)((uchar4)pixelArray[NUM_PREAMBLE_BITS-1-i] > threshold) ^ preambleBinary[i];
+                match = match & bitMatch;
+                
+            }
+        }
+        
+
+
+        
+        matchBuffer[id] = (uchar4)(match != 0 || matchBuffer[id] != 0) ;
     
     } else {
         // ideally start decoding here

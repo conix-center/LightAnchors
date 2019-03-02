@@ -72,6 +72,8 @@ class ViewController: UIViewController {
     
     let imageViewBackgroundColor = UIColor(red: 0, green: 0, blue: 0, alpha: 0.95)
     
+    var thresholdSlider = UISlider()
+    
     
     init () {
         super.init(nibName: nil, bundle: nil)
@@ -182,6 +184,13 @@ class ViewController: UIViewController {
         imageView.leftAnchor.constraint(equalTo: sceneView.leftAnchor).isActive = true
         imageView.rightAnchor.constraint(equalTo: sceneView.rightAnchor).isActive = true
         
+        view.addSubview(thresholdSlider)
+        thresholdSlider.translatesAutoresizingMaskIntoConstraints = false
+        thresholdSlider.heightAnchor.constraint(equalTo: sceneView.widthAnchor, multiplier: 0.1).isActive = true
+        thresholdSlider.bottomAnchor.constraint(equalTo: buttonStackView.topAnchor, constant: -20).isActive = true
+        thresholdSlider.rightAnchor.constraint(equalTo: sceneView.rightAnchor, constant: -20).isActive = true
+        thresholdSlider.leftAnchor.constraint(equalTo: sceneView.leftAnchor, constant: 20).isActive = true
+        
 //        view.addSubview(colorView)
 //        colorView.translatesAutoresizingMaskIntoConstraints = false
 //        colorView.widthAnchor.constraint(equalTo: view.widthAnchor, multiplier: 0.25).isActive = true
@@ -237,11 +246,20 @@ class ViewController: UIViewController {
         
         lightDecoder.delegate = self
       //  lightDecoder.evaluateResults()
+        
+        thresholdSlider.maximumValue = 1000
+        thresholdSlider.minimumValue = 0
+        thresholdSlider.addTarget(self, action: #selector(thresholdChanged), for: .valueChanged)
+        
+
+
     }
 
     
     @objc func startCapture(sender:UIButton) {
         if capture == false { // start
+            
+            lightDecoder.setupMatchPreamble()
             timeStamp = Date()
             //startBle()
             logDict = NSMutableDictionary()
@@ -371,6 +389,11 @@ class ViewController: UIViewController {
         
         
         
+    }
+    
+    
+    @objc func thresholdChanged() {
+        lightDecoder.threshold = Int(thresholdSlider.value)
     }
     
     
