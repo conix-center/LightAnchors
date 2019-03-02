@@ -424,7 +424,7 @@ class LightDecoder: NSObject {
         matchPreamble(imageBuffer: imageBuffer)
         let end = Date().timeIntervalSince1970
 // Adwait
-        NSLog("decode runtime: %f", end-start)
+ //       NSLog("decode runtime: %f", end-start)
         decoding -= 1
 
     }

@@ -93,14 +93,12 @@ kernel void matchPreamble(
             threshold = maxValue/2 + minValue/2;
             
             for (int i=0; i<NUM_PREAMBLE_BITS; i++) {
-                uchar4 bitMatch = (uchar4)((uchar4)pixelArray[NUM_PREAMBLE_BITS-1-i] > threshold) ^ preambleBinary[i];
+                bool4 bit = (uchar4)pixelArray[NUM_PREAMBLE_BITS-1-i] > threshold;
+                uchar4 bitMatch = (uchar4)((bit ^ (bool4)preambleBinary[i]) == 0);
                 match = match & bitMatch;
                 
             }
         }
-        
-
-
         
         matchBuffer[id] = (uchar4)(match != 0 || matchBuffer[id] != 0) ;
     
