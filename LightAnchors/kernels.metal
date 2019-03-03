@@ -14,7 +14,7 @@
 #define NUM_DATA_BITS 6
 #define NUM_SNR_BASELINE_BITS 4
 
-#define MATCH_BIT_THRESHOLD 10
+#define MATCH_BIT_THRESHOLD 11
 
 
 
@@ -111,7 +111,8 @@ kernel void matchPreamble(
             }
             
             ushort4 matchingBits = ~(decodedValue ^ 0xE32);
-            uchar4 passesDecoding = (uchar4)(popcount(matchingBits) > MATCH_BIT_THRESHOLD);
+            /* subtract the bits of the ushort that are not used */
+            uchar4 passesDecoding = (uchar4)((popcount(matchingBits) - (16-NUM_PREAMBLE_BITS)) >= MATCH_BIT_THRESHOLD);
             match = match & passesDecoding;
             
             
