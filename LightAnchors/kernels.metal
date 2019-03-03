@@ -14,6 +14,8 @@
 #define NUM_DATA_BITS 6
 #define NUM_SNR_BASELINE_BITS 4
 
+#define MATCH_BIT_THRESHOLD 10
+
 
 
 
@@ -27,7 +29,7 @@ constant int convolutionThreshold [[ function_constant(0) ]];
 /* iterate over entire preamble every frame */
 kernel void matchPreamble(
                           const device uchar4 *image [[ buffer(0) ]],
-                          device int *preamble [[ buffer(1) ]],
+                          device int *preambleZeroCenterBuffer [[ buffer(1) ]],
 //                          device uchar4 *preambleBuffer [[ buffer(2) ]],
                           device uchar4 *matchBuffer [[ buffer(2) ]],
 //                          device uchar4 *minBuffer [[ buffer(4) ]],
@@ -46,13 +48,13 @@ kernel void matchPreamble(
                           const device uchar4 *prevImage9 [[ buffer(12) ]],
                           const device uchar4 *prevImage10 [[ buffer(13) ]],
                           const device uchar4 *prevImage11 [[ buffer(14) ]],
-                          const device uchar4 *preambleBinary [[ buffer(15) ]],
+                          const device uchar4 *preambleBinaryBuffer [[ buffer(15) ]],
 //                          device uchar4 *dataMinBuffer [[ buffer(20) ]],
 //                          device uchar4 *dataMaxBuffer [[ buffer(21) ]],
                           uint id [[ thread_position_in_grid ]]
                           ) {
     
-    if (matchBuffer[id][0] == 0 && matchBuffer[id][1] == 0 && matchBuffer[id][2] == 0 && matchBuffer[id][3] == 0) {
+    if (all(matchBuffer[id] == 0)) {
     
         int4 pixelArray[12];
         
@@ -69,6 +71,7 @@ kernel void matchPreamble(
         pixelArray[1] = (int4)prevImage1[id];
         pixelArray[0] = (int4)image[id];
     
+        /* check convolution */
         int4 sum = 0;
         for (int i=0; i<NUM_PREAMBLE_BITS; i++) {
             sum = sum + pixelArray[i];
@@ -77,27 +80,41 @@ kernel void matchPreamble(
 
         int4 convolution = 0;
         for (int i=0; i<NUM_PREAMBLE_BITS; i++) {
-            convolution = convolution + preamble[i]*(pixelArray[NUM_PREAMBLE_BITS-1-i] - avg);
+            convolution = convolution + preambleZeroCenterBuffer[i]*(pixelArray[NUM_PREAMBLE_BITS-1-i] - avg);
         }
 
         uchar4 match = (uchar4)(convolution>convolutionThreshold);
         
+        
+        /* check decoding */
         uchar4 maxValue = 0;
         uchar4 minValue = 0xFF;
         uchar4 threshold = 0;
-        if (match[0] != 0 || match[1] != 0 || match[2] != 0 || match[3] != 0) {
+        if (any(match != 0)) {
             for (int i=0; i< NUM_PREAMBLE_BITS; i++) {
                 maxValue = max(maxValue, (uchar4)pixelArray[i]);
                 minValue = min(minValue, (uchar4)pixelArray[i]);
             }
             threshold = maxValue/2 + minValue/2;
             
-            for (int i=0; i<NUM_PREAMBLE_BITS; i++) {
+//            for (int i=0; i<NUM_PREAMBLE_BITS; i++) {
+//                bool4 bit = (uchar4)pixelArray[NUM_PREAMBLE_BITS-1-i] > threshold;
+//                uchar4 bitMatch = (uchar4)((bit ^ (bool4)preambleBinaryBuffer[i]) == 0);
+//                match = match & bitMatch;
+//
+//            }
+            
+            ushort4 decodedValue = 0;
+            for (int i=0; i< NUM_PREAMBLE_BITS; i++) {
                 bool4 bit = (uchar4)pixelArray[NUM_PREAMBLE_BITS-1-i] > threshold;
-                uchar4 bitMatch = (uchar4)((bit ^ (bool4)preambleBinary[i]) == 0);
-                match = match & bitMatch;
-                
+                decodedValue = (decodedValue << 1) | (ushort4)bit;
             }
+            
+            ushort4 matchingBits = ~(decodedValue ^ 0xE32);
+            uchar4 passesDecoding = (uchar4)(popcount(matchingBits) > MATCH_BIT_THRESHOLD);
+            match = match & passesDecoding;
+            
+            
         }
         
         matchBuffer[id] = (uchar4)(match != 0 || matchBuffer[id] != 0) ;
