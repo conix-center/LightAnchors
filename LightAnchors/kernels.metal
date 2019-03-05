@@ -14,7 +14,7 @@
 #define NUM_DATA_BITS 6
 #define NUM_SNR_BASELINE_BITS 4
 
-#define MATCH_BIT_THRESHOLD 11
+#define MATCH_BIT_THRESHOLD 9
 
 
 
@@ -49,6 +49,7 @@ kernel void matchPreamble(
                           const device uchar4 *prevImage10 [[ buffer(13) ]],
                           const device uchar4 *prevImage11 [[ buffer(14) ]],
                           const device uchar4 *preambleBinaryBuffer [[ buffer(15) ]],
+                          device uchar4 *numMatchingBitsBuffer [[ buffer(16) ]],
 //                          device uchar4 *dataMinBuffer [[ buffer(20) ]],
 //                          device uchar4 *dataMaxBuffer [[ buffer(21) ]],
                           uint id [[ thread_position_in_grid ]]
@@ -110,11 +111,16 @@ kernel void matchPreamble(
                 decodedValue = (decodedValue << 1) | (ushort4)bit;
             }
             
-            ushort4 matchingBits = ~(decodedValue ^ 0xE32);
+            ushort4 targetPreamble = 0xE32;
+            ushort4 matchingBits = ~(decodedValue ^ targetPreamble);
             /* subtract the bits of the ushort that are not used */
-            uchar4 passesDecoding = (uchar4)((popcount(matchingBits) - (16-NUM_PREAMBLE_BITS)) >= MATCH_BIT_THRESHOLD);
+            uchar4 numMatchingBits = (uchar4)(popcount(matchingBits) - (16-NUM_PREAMBLE_BITS));
+            uchar4 passesDecoding = (uchar4)(numMatchingBits >= MATCH_BIT_THRESHOLD);
             match = match & passesDecoding;
             
+         
+            
+            numMatchingBitsBuffer[id] = numMatchingBits & (match*255);//max(numMatchingBitsBuffer[id], numMatchingBits);
             
         }
         
@@ -126,25 +132,29 @@ kernel void matchPreamble(
         if (matchBuffer[id][0] != 0) {
             matchBuffer[id][0] += 1;
             if (matchBuffer[id][0] > 19) {
-                    matchBuffer[id][0] = 0;
+                matchBuffer[id][0] = 0;
+                numMatchingBitsBuffer[id][0] = 0;
             }
         }
         if (matchBuffer[id][1] != 0) {
             matchBuffer[id][1] += 1;
             if (matchBuffer[id][1] > 19) {
                 matchBuffer[id][1] = 0;
+                numMatchingBitsBuffer[id][1] = 0;
             }
         }
         if (matchBuffer[id][2] != 0) {
             matchBuffer[id][2] += 1;
             if (matchBuffer[id][2] > 19) {
                 matchBuffer[id][2] = 0;
+                numMatchingBitsBuffer[id][2] = 0;
             }
         }
         if (matchBuffer[id][3] != 0) {
             matchBuffer[id][3] += 1;
             if (matchBuffer[id][3] > 19) {
                 matchBuffer[id][3] = 0;
+                numMatchingBitsBuffer[id][3] = 0;
             }
         }
     }

@@ -442,6 +442,7 @@ class LightDecoder: NSObject {
     var preambleBinaryBuffer: MTLBuffer?
     var matchBuffer: MTLBuffer?
     var dataBuffer: MTLBuffer?
+    var numMatchingBitsBuffer: MTLBuffer?
 //    var baselineMinBufferOdd: MTLBuffer?
 //    var baselineMaxBufferOdd: MTLBuffer?
 //    var baselineMinBufferEven: MTLBuffer?
@@ -523,6 +524,7 @@ class LightDecoder: NSObject {
       //  preambleBuffer = device?.makeBuffer(length: 12*8, options: .storageModeShared)
         dataBuffer = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
         matchBuffer = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
+        numMatchingBitsBuffer = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
         
         let preambleBinaryArray: [UInt8] = [1,1,1,0,0,0,1,1,0,0,1,0]
         let preambleBinaryPtr: UnsafeMutablePointer<UInt8> = UnsafeMutablePointer(mutating: preambleBinaryArray)
@@ -633,6 +635,11 @@ class LightDecoder: NSObject {
         
         guard let matchBuffer = self.matchBuffer else {
             NSLog("no match buffer")
+            return
+        }
+        
+        guard let numMatchingBitsBuffer = self.numMatchingBitsBuffer else {
+            NSLog("no numMatchingBitsBuffer")
             return
         }
         
@@ -781,6 +788,7 @@ class LightDecoder: NSObject {
         computeCommandEncoder.setBuffer(prevImageBuffer10, offset: 0, index: 13)
         computeCommandEncoder.setBuffer(prevImageBuffer11, offset: 0, index: 14)
         computeCommandEncoder.setBuffer(preambleBinaryBuffer, offset: 0, index: 15)
+        computeCommandEncoder.setBuffer(numMatchingBitsBuffer, offset: 0, index: 16)
 //        computeCommandEncoder.setBuffer(dataMinBuffer, offset: 0, index: 9)
 //        computeCommandEncoder.setBuffer(dataMaxBuffer, offset: 0, index: 10)
         computeCommandEncoder.setComputePipelineState(pipelineState)
@@ -868,6 +876,11 @@ class LightDecoder: NSObject {
             return
         }
         
+        guard  let numMatchingBitsArray = self.numMatchingBitsBuffer?.contents().assumingMemoryBound(to: UInt8.self) else {
+            NSLog("no numMatchingBitsArray")
+            return
+        }
+        
 //        for i in 0..<100 {
 //            NSLog("match array %d", matchArray[i])
 //        }
@@ -883,33 +896,12 @@ class LightDecoder: NSObject {
 //            var numEvenMatchingData = 0
 //            var numEvenMatchingDataAndSnr = 0
             for i in 0..<length {
-//                let snrOdd = (Double(dataMaxArrayOdd[i])-Double(dataMinArrayOdd[i])) / (Double(baselineMaxArrayOdd[i])-Double(baselineMinArrayOdd[i]))
-//
-//                if dataArrayOdd[i] == 0x2A {
-//                    //     NSLog("odd max: %d, min: %d, snr: %f", dataMaxArrayOdd[i], dataMinArrayOdd[i], snr)
-//                    numOddMatchingData += 1
-//                    if snrOdd > 10 && snrOdd.isFinite {
-//                        numOddMatchingDataAndSnr += 1
-//                        dataImageArray[i] = 0xFF
-//                    } else {
-//                        dataImageArrayNoSNR[i] = 0xFF
-//                    }
+
+//                if matchArray[i] != 0 {
+//                    matchImageArray[i] = 0xFF;
 //                }
-//
-//                let snrEven = (Double(dataMaxArrayEven[i])-Double(dataMinArrayEven[i])) / (Double(baselineMaxArrayEven[i])-Double(baselineMinArrayEven[i]))
-//                if dataArrayEven[i] == 0x2A {
-//                    //     NSLog("odd max: %d, min: %d, snr: %f", dataMaxArrayOdd[i], dataMinArrayOdd[i], snr)
-//                    numEvenMatchingData += 1
-//                    if snrEven > 10 && snrEven.isFinite {
-//                        numEvenMatchingDataAndSnr += 1
-//                        dataImageArray[i] = 0xFF
-//                    } else {
-//                        dataImageArrayNoSNR[i] = 0xFF
-//                    }
-//                }
-                if matchArray[i] != 0 {
-                    matchImageArray[i] = 0xFF;
-                }
+                
+                matchImageArray[i] = numMatchingBitsArray[i] * (255/12);
                 
             }
             
@@ -925,6 +917,8 @@ class LightDecoder: NSObject {
                     self.delegate?.lightDecoder(self, didUpdateResultImage: image)
                 }
             }
+            
+            
 
 //            free(dataImageArray)
 //            free(dataImageArrayNoSNR)
@@ -1226,7 +1220,7 @@ extension UIImage {
         let colorBuffer = UnsafeMutablePointer<UInt8>.allocate(capacity: colorBufferLength)
         for i in 0..<length {
             if buffer[i] != 0 {
-                colorBuffer[i*bytesPerPixel + blueByte] = 0xFF;
+                colorBuffer[i*bytesPerPixel + blueByte] = buffer[i];
                 colorBuffer[i*bytesPerPixel + alphaByte] = 0xFF;
             }
         }
