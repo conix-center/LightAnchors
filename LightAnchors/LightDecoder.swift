@@ -427,11 +427,12 @@ class LightDecoder: NSObject {
 
     }
     
-    
-    var historyBufferOdd: MTLBuffer?
+    let numberOfDataCodes = 32
+    var dataCodesBuffer: MTLBuffer?
+ 
     var matchBufferOdd: MTLBuffer?
     var dataBufferOdd: MTLBuffer?
-    var historyBufferEven: MTLBuffer?
+
     var matchBufferEven: MTLBuffer?
     var dataBufferEven: MTLBuffer?
     var bufferLength = 0
@@ -453,17 +454,20 @@ class LightDecoder: NSObject {
     var dataMaxBufferEven: MTLBuffer?
     
     
+    var matchCounterBufferOdd: MTLBuffer?
+    var matchCounterBufferEven: MTLBuffer?
+    
+    
     func setupMatchPreamble() {
         guard let library = self.library else {
             NSLog("no library")
             return
         }
-        var threshold = 80
-        var preamble = 0x2A
+
         
         let constantValues = MTLFunctionConstantValues()
-        constantValues.setConstantValue(&threshold, type: .char, index: 0)
-        constantValues.setConstantValue(&preamble, type: .char, index: 1)
+//        constantValues.setConstantValue(&threshold, type: .char, index: 0)
+//        constantValues.setConstantValue(&preamble, type: .char, index: 1)
         do {
             matchPreambleFunction = try library.makeFunction(name: "matchPreamble", constantValues: constantValues)
         } catch {
@@ -471,15 +475,18 @@ class LightDecoder: NSObject {
         }
         
         bufferLength = 1920*1440
-        historyBufferOdd = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
-        matchBufferOdd = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
-        dataBufferOdd = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
+        let  dataCodesArray: [UInt16] = [0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28, 0x29, 0x30, 0x31, 0x32]
+        let dataCodesPtr: UnsafeMutablePointer<UInt16> = UnsafeMutablePointer(mutating: dataCodesArray)
+        dataCodesBuffer = device?.makeBuffer(bytes: dataCodesPtr, length: dataCodesArray.count*2, options: .storageModeShared)
+
+        matchBufferOdd = device?.makeBuffer(length: bufferLength*4, options: .storageModeShared)
+        dataBufferOdd = device?.makeBuffer(length: bufferLength*2, options: .storageModeShared)
         baselineMinBufferOdd = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
         baselineMaxBufferOdd = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
         
-        historyBufferEven = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
-        matchBufferEven = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
-        dataBufferEven = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
+
+        matchBufferEven = device?.makeBuffer(length: bufferLength*4, options: .storageModeShared)
+        dataBufferEven = device?.makeBuffer(length: bufferLength*2, options: .storageModeShared)
         baselineMinBufferEven = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
         baselineMaxBufferEven = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
         
@@ -487,6 +494,9 @@ class LightDecoder: NSObject {
         dataMaxBufferOdd = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
         dataMinBufferEven = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
         dataMaxBufferEven = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
+        
+        matchCounterBufferOdd = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
+        matchCounterBufferEven = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
         
         self.minBuffer = device?.makeBuffer(length: bufferLength, options:.storageModeShared)
         if let minBuffer = self.minBuffer {
@@ -517,60 +527,111 @@ class LightDecoder: NSObject {
         var prevBuffer3: MTLBuffer?
         var prevBuffer4: MTLBuffer?
         var prevBuffer5: MTLBuffer?
+        var prevBuffer6: MTLBuffer?
+        var prevBuffer7: MTLBuffer?
+        var prevBuffer8: MTLBuffer?
+        var prevBuffer9: MTLBuffer?
+        var prevBuffer10: MTLBuffer?
+        var prevBuffer11: MTLBuffer?
+        var prevBuffer12: MTLBuffer?
+        var prevBuffer13: MTLBuffer?
+        var prevBuffer14: MTLBuffer?
+        var prevBuffer15: MTLBuffer?
+        var prevBuffer16: MTLBuffer?
+        var prevBuffer17: MTLBuffer?
+        var prevBuffer18: MTLBuffer?
+        var prevBuffer19: MTLBuffer?
+
         
         var dataMinBufferOpt: MTLBuffer?
         var dataMaxBufferOpt: MTLBuffer?
         
+        var matchCounterBuffer: MTLBuffer?
+        
         if evenFrame != true {//odd
-            hBuffer = self.historyBufferOdd
             mBuffer = self.matchBufferOdd
             dBuffer = self.dataBufferOdd
             baselineMinBufferOpt = self.baselineMinBufferOdd
             baselineMaxBufferOpt = self.baselineMaxBufferOdd
             
             oddBufferArray.append(imageBuffer)
-            while oddBufferArray.count > 6 {
+            while oddBufferArray.count > 20 {
                 oddBufferArray.remove(at: 0)
             }
-            if oddBufferArray.count < 6 {
+            if oddBufferArray.count < 20 {
                 return
             }
-            prevBuffer1 = oddBufferArray[4]
-            prevBuffer2 = oddBufferArray[3]
-            prevBuffer3 = oddBufferArray[2]
-            prevBuffer4 = oddBufferArray[1]
-            prevBuffer5 = oddBufferArray[0]
+            prevBuffer1 = oddBufferArray[18]
+            prevBuffer2 = oddBufferArray[17]
+            prevBuffer3 = oddBufferArray[16]
+            prevBuffer4 = oddBufferArray[15]
+            prevBuffer5 = oddBufferArray[14]
+            prevBuffer6 = oddBufferArray[13]
+            prevBuffer7 = oddBufferArray[12]
+            prevBuffer8 = oddBufferArray[11]
+            prevBuffer9 = oddBufferArray[10]
+            prevBuffer10 = oddBufferArray[9]
+            prevBuffer11 = oddBufferArray[8]
+            prevBuffer12 = oddBufferArray[7]
+            prevBuffer13 = oddBufferArray[6]
+            prevBuffer14 = oddBufferArray[5]
+            prevBuffer15 = oddBufferArray[4]
+            prevBuffer16 = oddBufferArray[3]
+            prevBuffer17 = oddBufferArray[2]
+            prevBuffer18 = oddBufferArray[1]
+            prevBuffer19 = oddBufferArray[0]
+      
             
             dataMinBufferOpt = self.dataMinBufferOdd
             dataMaxBufferOpt = self.dataMaxBufferOdd
+            
+            
+            matchCounterBuffer = self.matchCounterBufferOdd
+            
         } else {
-            hBuffer = self.historyBufferEven
+
             mBuffer = self.matchBufferEven
             dBuffer = self.dataBufferEven
             baselineMinBufferOpt = self.baselineMinBufferEven
             baselineMaxBufferOpt = self.baselineMaxBufferEven
             
             evenBufferArray.append(imageBuffer)
-            while evenBufferArray.count > 6 {
+            while evenBufferArray.count > 20 {
                 evenBufferArray.remove(at: 0)
             }
-            if evenBufferArray.count < 6 {
+            if evenBufferArray.count < 20 {
                 return
             }
             
-            prevBuffer1 = evenBufferArray[4]
-            prevBuffer2 = evenBufferArray[3]
-            prevBuffer3 = evenBufferArray[2]
-            prevBuffer4 = evenBufferArray[1]
-            prevBuffer5 = evenBufferArray[0]
+            prevBuffer1 = evenBufferArray[18]
+            prevBuffer2 = evenBufferArray[17]
+            prevBuffer3 = evenBufferArray[16]
+            prevBuffer4 = evenBufferArray[15]
+            prevBuffer5 = evenBufferArray[14]
+            prevBuffer6 = evenBufferArray[13]
+            prevBuffer7 = evenBufferArray[12]
+            prevBuffer8 = evenBufferArray[11]
+            prevBuffer9 = evenBufferArray[10]
+            prevBuffer10 = evenBufferArray[9]
+            prevBuffer11 = evenBufferArray[8]
+            prevBuffer12 = evenBufferArray[7]
+            prevBuffer13 = evenBufferArray[6]
+            prevBuffer14 = evenBufferArray[5]
+            prevBuffer15 = evenBufferArray[4]
+            prevBuffer16 = evenBufferArray[3]
+            prevBuffer17 = evenBufferArray[2]
+            prevBuffer18 = evenBufferArray[1]
+            prevBuffer19 = evenBufferArray[0]
             
             dataMinBufferOpt = self.dataMinBufferEven
             dataMaxBufferOpt = self.dataMaxBufferEven
             
+            matchCounterBuffer = self.matchCounterBufferEven
+            
         }
         
-        guard let historyBuffer = hBuffer else {
-            NSLog("no history buffer")
+        guard let dataCodesBuffer = self.dataCodesBuffer else {
+            NSLog("no data codes buffer")
             return
         }
         
@@ -579,7 +640,7 @@ class LightDecoder: NSObject {
             return
         }
         
-        guard let dataBuffer = dBuffer else {
+        guard let actualDataBuffer = dBuffer else {
             NSLog("no data buffer")
             return
         }
@@ -619,6 +680,77 @@ class LightDecoder: NSObject {
             return
         }
         
+        guard let prevImageBuffer6 = prevBuffer6 else {
+            NSLog("no prevBuffer1")
+            return
+        }
+        
+        guard let prevImageBuffer7 = prevBuffer7 else {
+            NSLog("no prevBuffer2")
+            return
+        }
+        
+        guard let prevImageBuffer8 = prevBuffer8 else {
+            NSLog("no prevBuffer3")
+            return
+        }
+        
+        guard let prevImageBuffer9 = prevBuffer9 else {
+            NSLog("no prevBuffer4")
+            return
+        }
+        
+        guard let prevImageBuffer10 = prevBuffer10 else {
+            NSLog("no prevBuffer5")
+            return
+        }
+        
+        guard let prevImageBuffer11 = prevBuffer11 else {
+            NSLog("no prevBuffer1")
+            return
+        }
+        
+        guard let prevImageBuffer12 = prevBuffer12 else {
+            NSLog("no prevBuffer2")
+            return
+        }
+        
+        guard let prevImageBuffer13 = prevBuffer13 else {
+            NSLog("no prevBuffer3")
+            return
+        }
+        
+        guard let prevImageBuffer14 = prevBuffer14 else {
+            NSLog("no prevBuffer4")
+            return
+        }
+        
+        guard let prevImageBuffer15 = prevBuffer15 else {
+            NSLog("no prevBuffer5")
+            return
+        }
+        
+        guard let prevImageBuffer16 = prevBuffer16 else {
+            NSLog("no prevBuffer1")
+            return
+        }
+        
+        guard let prevImageBuffer17 = prevBuffer17 else {
+            NSLog("no prevBuffer2")
+            return
+        }
+        
+        guard let prevImageBuffer18 = prevBuffer18 else {
+            NSLog("no prevBuffer3")
+            return
+        }
+        
+        guard let prevImageBuffer19 = prevBuffer19 else {
+            NSLog("no prevBuffer3")
+            return
+        }
+
+        
         guard let dataMinBuffer = dataMinBufferOpt else {
             NSLog("no data min buffer")
             return
@@ -631,10 +763,7 @@ class LightDecoder: NSObject {
         
   
         
-        if imageBuffer.length != historyBuffer.length || imageBuffer.length != matchBuffer.length {
-            NSLog("buffers do not match")
-            return
-        }
+
         let length = imageBuffer.length
         
         
@@ -674,20 +803,36 @@ class LightDecoder: NSObject {
         }
         
         computeCommandEncoder.setBuffer(imageBuffer, offset: 0, index: 0)
-        computeCommandEncoder.setBuffer(historyBuffer, offset: 0, index: 1)
-        computeCommandEncoder.setBuffer(matchBuffer, offset: 0, index: 2)
-        computeCommandEncoder.setBuffer(minBuffer, offset: 0, index: 3)
-        computeCommandEncoder.setBuffer(maxBuffer, offset: 0, index: 4)
-        computeCommandEncoder.setBuffer(dataBuffer, offset: 0, index: 5)
+        computeCommandEncoder.setBuffer(dataCodesBuffer, offset: 0, index: 1)
+        computeCommandEncoder.setBuffer(actualDataBuffer, offset: 0, index: 2)
+        computeCommandEncoder.setBuffer(matchBuffer, offset: 0, index: 3)
+        computeCommandEncoder.setBuffer(dataMinBuffer, offset: 0, index: 4)
+        computeCommandEncoder.setBuffer(dataMaxBuffer, offset: 0, index: 5)
         computeCommandEncoder.setBuffer(baselineMinBuffer, offset: 0, index: 6)
         computeCommandEncoder.setBuffer(baselineMaxBuffer, offset: 0, index: 7)
-        computeCommandEncoder.setBuffer(prevImageBuffer1, offset: 0, index: 8)
-        computeCommandEncoder.setBuffer(prevImageBuffer2, offset: 0, index: 9)
-        computeCommandEncoder.setBuffer(prevImageBuffer3, offset: 0, index: 10)
-        computeCommandEncoder.setBuffer(prevImageBuffer4, offset: 0, index: 11)
-        computeCommandEncoder.setBuffer(prevImageBuffer5, offset: 0, index: 12)
-        computeCommandEncoder.setBuffer(dataMinBuffer, offset: 0, index: 13)
-        computeCommandEncoder.setBuffer(dataMaxBuffer, offset: 0, index: 14)
+        computeCommandEncoder.setBuffer(matchCounterBuffer, offset: 0, index: 8)
+        
+        computeCommandEncoder.setBuffer(prevImageBuffer1, offset: 0, index: 9)
+        computeCommandEncoder.setBuffer(prevImageBuffer2, offset: 0, index: 10)
+        computeCommandEncoder.setBuffer(prevImageBuffer3, offset: 0, index: 11)
+        computeCommandEncoder.setBuffer(prevImageBuffer4, offset: 0, index: 12)
+        computeCommandEncoder.setBuffer(prevImageBuffer5, offset: 0, index: 13)
+        computeCommandEncoder.setBuffer(prevImageBuffer6, offset: 0, index: 14)
+        computeCommandEncoder.setBuffer(prevImageBuffer7, offset: 0, index: 15)
+        computeCommandEncoder.setBuffer(prevImageBuffer8, offset: 0, index: 16)
+        computeCommandEncoder.setBuffer(prevImageBuffer9, offset: 0, index: 17)
+        computeCommandEncoder.setBuffer(prevImageBuffer10, offset: 0, index: 18)
+        computeCommandEncoder.setBuffer(prevImageBuffer11, offset: 0, index: 19)
+        computeCommandEncoder.setBuffer(prevImageBuffer12, offset: 0, index: 20)
+        computeCommandEncoder.setBuffer(prevImageBuffer13, offset: 0, index: 21)
+        computeCommandEncoder.setBuffer(prevImageBuffer14, offset: 0, index: 22)
+        computeCommandEncoder.setBuffer(prevImageBuffer15, offset: 0, index: 23)
+        computeCommandEncoder.setBuffer(prevImageBuffer16, offset: 0, index: 24)
+        computeCommandEncoder.setBuffer(prevImageBuffer17, offset: 0, index: 25)
+        computeCommandEncoder.setBuffer(prevImageBuffer18, offset: 0, index: 26)
+        computeCommandEncoder.setBuffer(prevImageBuffer19, offset: 0, index: 27)
+        
+
         computeCommandEncoder.setComputePipelineState(pipelineState)
         
         let threadExecutionWidth = pipelineState.threadExecutionWidth
@@ -867,19 +1012,9 @@ class LightDecoder: NSObject {
         var historyBufferImageOdd: UIImage?
         var historyBufferImageEven: UIImage?
         
-        guard let historyArrayOdd = self.historyBufferOdd?.contents().assumingMemoryBound(to: UInt8.self) else {
-            NSLog("no history array odd")
-            return;
-        }
-            historyBufferImageOdd = UIImage.image(buffer: historyArrayOdd, length: length, rowWidth: 1920)
+
         
-        if let historyArrayEven = self.historyBufferEven?.contents().assumingMemoryBound(to: UInt8.self) {
-            historyBufferImageEven = UIImage.image(buffer: historyArrayEven, length: length, rowWidth: 1920)
-        }
-        
-        for i in 0..<1920 {
-            NSLog(" possible preamble: 0x%x", historyArrayOdd[1920*720+i])
-        }
+
         
         
         
