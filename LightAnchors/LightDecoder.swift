@@ -862,90 +862,28 @@ class LightDecoder: NSObject {
         
         let length = 1920*1440
         
-        guard let dataArrayOdd = dataBufferOdd?.contents().assumingMemoryBound(to: UInt8.self) else  {
-            NSLog("no data array odd")
+        
+        guard let matchArrayOdd = matchBufferOdd?.contents().assumingMemoryBound(to: UInt32.self) else {
+            NSLog("no match array odd")
             return
         }
         
-        guard let baselineMinArrayOdd = self.baselineMinBufferOdd?.contents().assumingMemoryBound(to: UInt8.self) else {
-            NSLog("no baselinMinArrayOdd")
-            return
-        }
-        guard let baselineMaxArrayOdd = self.baselineMaxBufferOdd?.contents().assumingMemoryBound(to: UInt8.self) else {
-            NSLog("no baselinMaxArrayOdd")
+        guard let matchArrayEven = matchBufferEven?.contents().assumingMemoryBound(to: UInt32.self) else {
+            NSLog("no match array even")
             return
         }
         
-        guard let dataMinArrayOdd = self.dataMinBufferOdd?.contents().assumingMemoryBound(to: UInt8.self) else {
-            NSLog("no dataMaxArrayEven")
-            return
-        }
-        
-        guard let dataMaxArrayOdd = self.dataMaxBufferOdd?.contents().assumingMemoryBound(to: UInt8.self) else {
-            NSLog("no dataMaxArrayEven")
-            return
-        }
-        
-        
-        guard let dataArrayEven = self.dataBufferEven?.contents().assumingMemoryBound(to: UInt8.self) else {
-            NSLog("no dataArrayEven")
-            return
-        }
-        
-        guard let baselineMinArrayEven = self.baselineMinBufferEven?.contents().assumingMemoryBound(to: UInt8.self) else {
-            NSLog("no baselinMinArrayOdd")
-            return
-        }
-        guard let baselineMaxArrayEven = self.baselineMaxBufferEven?.contents().assumingMemoryBound(to: UInt8.self) else {
-            NSLog("no baselinMaxArrayOdd")
-            return
-        }
-        
-        guard let dataMinArrayEven = self.dataMinBufferEven?.contents().assumingMemoryBound(to: UInt8.self) else {
-            NSLog("no dataMaxArrayEven")
-            return
-        }
-        
-        guard let dataMaxArrayEven = self.dataMaxBufferEven?.contents().assumingMemoryBound(to: UInt8.self) else {
-            NSLog("no dataMaxArrayEven")
-            return
-        }
+
         
         DispatchQueue.global(qos: .userInitiated).async {
             
             let dataImageArray = UnsafeMutablePointer<UInt8>.allocate(capacity: length)
             let dataImageArrayNoSNR = UnsafeMutablePointer<UInt8>.allocate(capacity: length)
             
-            var numOddMatchingData = 0
-            var numOddMatchingDataAndSnr = 0
-            var numEvenMatchingData = 0
-            var numEvenMatchingDataAndSnr = 0
             for i in 0..<length {
-                let snrOdd = (Double(dataMaxArrayOdd[i])-Double(dataMinArrayOdd[i])) / (Double(baselineMaxArrayOdd[i])-Double(baselineMinArrayOdd[i]))
-                
-                if dataArrayOdd[i] == 0x2A {
-                    //     NSLog("odd max: %d, min: %d, snr: %f", dataMaxArrayOdd[i], dataMinArrayOdd[i], snr)
-                    numOddMatchingData += 1
-                    if snrOdd > 10 && snrOdd.isFinite {
-                        numOddMatchingDataAndSnr += 1
-                        dataImageArray[i] = 0xFF
-                    } else {
-                        dataImageArrayNoSNR[i] = 0xFF
-                    }
+                if matchArrayOdd[i] != 0 || matchArrayEven[i] != 0 {
+                    dataImageArray[i] = 0xFF
                 }
-                
-                let snrEven = (Double(dataMaxArrayEven[i])-Double(dataMinArrayEven[i])) / (Double(baselineMaxArrayEven[i])-Double(baselineMinArrayEven[i]))
-                if dataArrayEven[i] == 0x2A {
-                    //     NSLog("odd max: %d, min: %d, snr: %f", dataMaxArrayOdd[i], dataMinArrayOdd[i], snr)
-                    numEvenMatchingData += 1
-                    if snrEven > 10 && snrEven.isFinite {
-                        numEvenMatchingDataAndSnr += 1
-                        dataImageArray[i] = 0xFF
-                    } else {
-                        dataImageArrayNoSNR[i] = 0xFF
-                    }
-                }
-                
             }
             
             let rotatedImageArray = UnsafeMutablePointer<UInt8>.allocate(capacity: length)
