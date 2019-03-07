@@ -7,6 +7,8 @@
 //
 
 import UIKit
+import MetalPerformanceShaders
+import MetalKit
 
 
 protocol LightDecoderDelegate {
@@ -218,6 +220,8 @@ class LightDecoder: NSObject {
             return
         }
 
+        
+        
         if processingImageBuffers == false {
             imageBufferArray.append(imageBuffer)
         
@@ -275,7 +279,7 @@ class LightDecoder: NSObject {
             NSLog("Cannot make command buffer")
             return
         }
-        
+
 //        guard let library = self.library else {
 //            NSLog("No library")
 //            return
@@ -781,6 +785,28 @@ class LightDecoder: NSObject {
             NSLog("Cannot make command buffer")
             return
         }
+
+        let descriptor = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .r8Unorm/*.a8Unorm*/, width: 1920, height: 1440, mipmapped: false)
+        descriptor.usage = [.shaderRead, .shaderWrite]
+        let texture = imageBuffer.makeTexture(descriptor: descriptor, offset: 0, bytesPerRow: 1920)
+ //       let outTexture = device.makeTexture(descriptor: descriptor)
+        
+        let blur = MPSImageGaussianBlur(device: device, sigma: 5)
+        let inPlaceTexture = UnsafeMutablePointer<MTLTexture>.allocate(capacity: 1)
+        inPlaceTexture.initialize(to: texture!)
+       blur.encode(commandBuffer: commandBuffer, inPlaceTexture: inPlaceTexture)
+      //  blur.encode(commandBuffer: commandBuffer, sourceTexture: texture!, destinationTexture: outTexture!)
+        
+//        commandBuffer.commit()
+//        commandBuffer.waitUntilCompleted()
+        
+   //     let ptr = UnsafeMutablePointer<UInt8>.allocate(capacity: 1920*1440)
+  //      texture!.getBytes(ptr, bytesPerRow: 1920, from: MTLRegion(origin: MTLOrigin(x: 0, y: 0, z: 0), size: MTLSize(width: 1920, height: 1440, depth: 1)), mipmapLevel: 0)
+   //     let imageArray = imageBuffer.contents().assumingMemoryBound(to: UInt8.self)
+  //      let image = UIImage.image(buffer: imageArray, length: 1920*1440, rowWidth: 1920)
+
+        
+        
         
         guard let matchPreambleFunction = self.matchPreambleFunction else {
             NSLog("Cannot make difference function")

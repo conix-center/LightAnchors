@@ -431,13 +431,13 @@ class ViewController: UIViewController {
             //let dataSize = CVPixelBufferGetDataSize(frame.capturedImage)
 //            NSLog("dataSize: %d", numGrayBytes)
             
-            let ciImage = CIImage(cvPixelBuffer: buffer)
-            let uiImage = UIImage(ciImage: ciImage)
-            let blurredImage = ciImage.applyingGaussianBlur(sigma: 10)
-            let blurUIImage = UIImage(ciImage: blurredImage)
-            if let blurredPixelBuffer = blurredImage.pixelBuffer {
+//            let ciImage = CIImage(cvPixelBuffer: buffer)
+//            let uiImage = UIImage(ciImage: ciImage)
+//            let blurredImage = ciImage.applyingGaussianBlur(sigma: 10)
+//            let blurUIImage = UIImage(ciImage: blurredImage)
+//            if let blurredPixelBuffer = blurredImage.pixelBuffer {
 
-                if let baseAddressGray = CVPixelBufferGetBaseAddressOfPlane(blurredPixelBuffer, grayPlaneIndex) {
+                if let baseAddressGray = CVPixelBufferGetBaseAddressOfPlane(buffer, grayPlaneIndex) {
     //                NSLog("frame.captureImage: \(buffer)\n\n")
     //                NSLog("baseAddress: \(baseAddressGray)")
               //      let bufferData = Data(bytes: baseAddressGray, count: numGrayBytes)
@@ -449,9 +449,9 @@ class ViewController: UIViewController {
 
                 }
                 
-            } else {
-                NSLog("no blurredPixelBuffer")
-            }
+//            } else {
+//                NSLog("no blurredPixelBuffer")
+//            }
             CVPixelBufferUnlockBaseAddress(buffer, .readOnly)
         }
         
