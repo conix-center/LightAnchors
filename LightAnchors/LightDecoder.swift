@@ -40,6 +40,8 @@ class LightDecoder: NSObject {
     let fileNameDateFormatter = DateFormatter()
     
     //var imageDataArray: [Data] = []
+    
+  
     var imageBufferArray = [MTLBuffer]()
     var processingImageBuffers = false
     
@@ -209,10 +211,13 @@ class LightDecoder: NSObject {
             return
         }
         
+        
+     
         guard let imageBuffer:MTLBuffer = device.makeBuffer(bytes: imageBytes, length: length, options: .storageModeShared) else {
             NSLog("Cannot create image buffer")
             return
         }
+
         if processingImageBuffers == false {
             imageBufferArray.append(imageBuffer)
         
@@ -475,7 +480,7 @@ class LightDecoder: NSObject {
         }
         
         bufferLength = 1920*1440
-        let  dataCodesArray: [UInt16] = [0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28, 0x29, 0x30, 0x31, 0x32]
+        let  dataCodesArray: [UInt16] = [0x9556,0x9559,0x955a,0x9565,0x9566,0x9569,0x956a,0x9595,0x9596,0x9599,0x959a,0x95a5,0x95a6,0x95a9,0x95aa,0x9655,0x9656,0x9659,0x965a,0x9665,0x9666,0x9669,0x966a,0x9695,0x9696,0x9699,0x969a,0x96a5,0x96a6,0x96a9,0x96aa,0x9955]
         let dataCodesPtr: UnsafeMutablePointer<UInt16> = UnsafeMutablePointer(mutating: dataCodesArray)
         dataCodesBuffer = device?.makeBuffer(bytes: dataCodesPtr, length: dataCodesArray.count*2, options: .storageModeShared)
 
@@ -856,6 +861,10 @@ class LightDecoder: NSObject {
         
     }
     
+    
+    
+    
+    
     var frameCountForImageRender = 0
     
     func updateResultImage() {
@@ -873,20 +882,36 @@ class LightDecoder: NSObject {
             return
         }
         
-
-        
         DispatchQueue.global(qos: .userInitiated).async {
             
-            let dataImageArray = UnsafeMutablePointer<UInt8>.allocate(capacity: length)
-            let dataImageArrayNoSNR = UnsafeMutablePointer<UInt8>.allocate(capacity: length)
+            let dataImageArray = UnsafeMutablePointer<UInt32>.allocate(capacity: length)
+  //          let dataImageArrayNoSNR = UnsafeMutablePointer<UInt8>.allocate(capacity: length)
             
             for i in 0..<length {
                 if matchArrayOdd[i] != 0 || matchArrayEven[i] != 0 {
-                    dataImageArray[i] = 0xFF
+                    dataImageArray[i] = matchArrayOdd[i] | matchArrayEven[i]
                 }
             }
             
-            let rotatedImageArray = UnsafeMutablePointer<UInt8>.allocate(capacity: length)
+            var dict = Dictionary<UInt32, Int>()
+            for i in 0..<1920*1440 {
+                let pixel: UInt32 = dataImageArray[i]
+                if pixel != 0 {
+                    if let count = dict[pixel] {
+                        dict[pixel] = count + 1
+                    } else {
+                        dict[pixel] = 1
+                    }
+                }
+            }
+            
+            for key in dict.keys {
+                if let count = dict[key] {
+                    NSLog("code: 0x%x count: %d", key, count)
+                }
+            }
+            
+            let rotatedImageArray = UnsafeMutablePointer<UInt32>.allocate(capacity: length)
             for row in 0..<1440 {
                 for column in 0..<1920 {
                     rotatedImageArray[column*1440 + (1439-row)] = dataImageArray[row*1920+column]
@@ -900,7 +925,7 @@ class LightDecoder: NSObject {
             }
 
             free(dataImageArray)
-            free(dataImageArrayNoSNR)
+      //      free(dataImageArrayNoSNR)
             free(rotatedImageArray)
             
             
@@ -1120,7 +1145,7 @@ class LightDecoder: NSObject {
         for i in 0..<length {
             dataImageArrayNoSNR[i] = dataImageArrayOddNoSNR[i] | dataImageArrayEvenNoSNR[i]
         }
-        let dataImageNoSNR = UIImage.colorImage(buffer: dataImageArrayNoSNR, length: length, rowWidth: 1920)
+ //       let dataImageNoSNR = UIImage.colorImage(buffer: dataImageArrayNoSNR, length: length, rowWidth: 1920)
         
         
 
@@ -1170,9 +1195,11 @@ extension UIImage {
     }
     
     
-    class func colorImage(buffer: UnsafeMutablePointer<UInt8>, length: Int, rowWidth: Int) -> UIImage? {
+    class func colorImage(buffer: UnsafeMutablePointer<UInt32>, length: Int, rowWidth: Int) -> UIImage? {
         let colorSpace = CGColorSpaceCreateDeviceRGB()
         
+        let redByte = 0
+        let greenByte = 1
         let blueByte = 2
         let alphaByte = 3
         
@@ -1181,9 +1208,16 @@ extension UIImage {
         let colorRowWidthBytes = rowWidth * bytesPerPixel
         
         let colorBuffer = UnsafeMutablePointer<UInt8>.allocate(capacity: colorBufferLength)
+        let targetBit: UInt32 = 1 << 0
         for i in 0..<length {
-            if buffer[i] != 0 {
-                colorBuffer[i*bytesPerPixel + blueByte] = 0xFF;
+            if buffer[i] & targetBit != 0  {
+                colorBuffer[i*bytesPerPixel + greenByte] = 0xFF;
+                colorBuffer[i*bytesPerPixel + alphaByte] = 0xFF;
+                if buffer[i] & ~targetBit != 0 {
+                    colorBuffer[i*bytesPerPixel + redByte] = 0xFF;
+                }
+            } else if buffer[i] != 0 {
+                colorBuffer[i*bytesPerPixel + redByte] = 0xFF;
                 colorBuffer[i*bytesPerPixel + alphaByte] = 0xFF;
             }
         }

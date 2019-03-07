@@ -430,20 +430,27 @@ class ViewController: UIViewController {
             CVPixelBufferLockBaseAddress(buffer, .readOnly)
             //let dataSize = CVPixelBufferGetDataSize(frame.capturedImage)
 //            NSLog("dataSize: %d", numGrayBytes)
-            if let baseAddressGray = CVPixelBufferGetBaseAddressOfPlane(buffer, grayPlaneIndex) {
-//                NSLog("frame.captureImage: \(buffer)\n\n")
-//                NSLog("baseAddress: \(baseAddressGray)")
-          //      let bufferData = Data(bytes: baseAddressGray, count: numGrayBytes)
-                //self.lightDecoder.add(imageBytes: baseAddressGray, length: numGrayBytes)
-                //self.lightDecoder.save(imageData: baseAddressGray, length: numGrayBytes)
-              // self.lightDecoder.add(imageData: bufferData)
-                //self.lightDecoder.addToArrayForSaving(imageBytes: baseAddressGray, length: numGrayBytes)
-                self.lightDecoder.decode(imageBytes: baseAddressGray, length: numGrayBytes)
-//                do {
-//                    try bufferData.write(to: filePath)
-//                } catch {
-//                    NSLog("error writing to file")
-//                }
+            
+            let ciImage = CIImage(cvPixelBuffer: buffer)
+            let uiImage = UIImage(ciImage: ciImage)
+            let blurredImage = ciImage.applyingGaussianBlur(sigma: 10)
+            let blurUIImage = UIImage(ciImage: blurredImage)
+            if let blurredPixelBuffer = blurredImage.pixelBuffer {
+
+                if let baseAddressGray = CVPixelBufferGetBaseAddressOfPlane(blurredPixelBuffer, grayPlaneIndex) {
+    //                NSLog("frame.captureImage: \(buffer)\n\n")
+    //                NSLog("baseAddress: \(baseAddressGray)")
+              //      let bufferData = Data(bytes: baseAddressGray, count: numGrayBytes)
+                    //self.lightDecoder.add(imageBytes: baseAddressGray, length: numGrayBytes)
+                    //self.lightDecoder.save(imageData: baseAddressGray, length: numGrayBytes)
+                  // self.lightDecoder.add(imageData: bufferData)
+                    //self.lightDecoder.addToArrayForSaving(imageBytes: baseAddressGray, length: numGrayBytes)
+                    self.lightDecoder.decode(imageBytes: baseAddressGray, length: numGrayBytes)
+
+                }
+                
+            } else {
+                NSLog("no blurredPixelBuffer")
             }
             CVPixelBufferUnlockBaseAddress(buffer, .readOnly)
         }
