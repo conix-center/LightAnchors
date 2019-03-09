@@ -10,14 +10,14 @@
 #include <metal_math>
 //#include <metal_integer>
 
-#define NUM_PREAMBLE_BITS 6
-#define NUM_DATA_BITS 6
+//#define NUM_PREAMBLE_BITS 6
+//#define NUM_DATA_BITS 6
 #define NUM_SNR_BASELINE_BITS 4
 
 #define NUM_DATA_CODES 32
 #define NUM_DATA_BUFFERS 16
 #define NUM_BASELINE_BUFFERS 4
-#define SNR_THRESHOLD 5
+#define SNR_THRESHOLD 2
 
 
 
@@ -103,10 +103,12 @@ kernel void matchPreamble(
         ushort4 bit = (ushort4)(image[id] > thresh);
         
         actualDataBuffer[id] = (actualDataBuffer[id] << 1) | bit;
+      //  ushort4 restrictedActualData = actualDataBuffer[id] & 0x0FFF;
+        ushort4 restrictedActualData = actualDataBuffer[id];
         uint4 matches = 0;
         for (int i=0; i<NUM_DATA_CODES; i++) {
             ushort dataCode = dataCodesBuffer[i];
-            ushort4 match = (ushort4)((actualDataBuffer[id] ^ dataCode) == 0);
+            ushort4 match = (ushort4)((restrictedActualData ^ dataCode) == 0);
             matches = matches << 1;
             matches |= (uint4)match;
             
@@ -133,6 +135,7 @@ kernel void matchPreamble(
         
         
     } else {
+        /* how long to keep matches for */
         matchCounterBuffer[id] += (uchar4)(matchBuffer != 0);
         if (any(matchCounterBuffer[id] == 20)) {
             matchCounterBuffer[id] = 0;

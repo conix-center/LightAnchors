@@ -192,6 +192,7 @@ class ViewController: UIViewController {
         let timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { (timer) in
             //NSLog("number of frames: \(self.frameCount)")
             self.frameRateLabel.text = "\(self.frameCount) fps"
+            NSLog("frame rate %d fps", self.frameCount)
             self.frameCount = 0
         }
         
@@ -532,7 +533,7 @@ extension ViewController: ARSCNViewDelegate {
 
 extension ViewController: ARSessionDelegate {
     func session(_ session: ARSession, didUpdate frame: ARFrame) {
-        
+
         
         if capture == true {
             let currentTransform = frame.camera.transform

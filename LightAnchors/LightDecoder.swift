@@ -56,6 +56,7 @@ class LightDecoder: NSObject {
     var differenceFunction:MTLFunction?
     var maxFunction: MTLFunction?
     var matchPreambleFunction: MTLFunction?
+    var blurFunction: MPSImageGaussianBlur?
     
     var delegate: LightDecoderDelegate?
     
@@ -316,7 +317,7 @@ class LightDecoder: NSObject {
         differenceComputeCommandEncoder.setComputePipelineState(differencePipelineState)
         
         let differenceThreadExecutionWidth = differencePipelineState.threadExecutionWidth
-        NSLog("threadExecutionWidth: %d", differenceThreadExecutionWidth)
+    //    NSLog("threadExecutionWidth: %d", differenceThreadExecutionWidth)
         let differenceThreadsPerGroup = MTLSize(width: differenceThreadExecutionWidth, height: 1, depth: 1)
         
         let differenceNumThreadGroups = MTLSize(width: /*1*/(length/4/*+threadExecutionWidth*/)/differenceThreadExecutionWidth, height: 1, depth: 1)
@@ -376,7 +377,7 @@ class LightDecoder: NSObject {
         maxComputeCommandEncoder.setComputePipelineState(maxPipelineState)
         
         let maxThreadExecutionWidth = maxPipelineState.threadExecutionWidth
-        NSLog("threadExecutionWidth: %d", maxThreadExecutionWidth)
+   //     NSLog("threadExecutionWidth: %d", maxThreadExecutionWidth)
         let maxThreadsPerGroup = MTLSize(width: differenceThreadExecutionWidth, height: 1, depth: 1)
         
         let maxNumThreadGroups = MTLSize(width: 4, height: 1, depth: 1)
@@ -413,7 +414,9 @@ class LightDecoder: NSObject {
     func decode(imageBytes: UnsafeRawPointer, length: Int) {
         evenFrame = !evenFrame
         
-        NSLog("decoding count: %d", decoding)
+        if decoding > 0 {
+            NSLog("decoding count: %d", decoding)
+        }
         decoding += 1
         
         let start = Date().timeIntervalSince1970
@@ -466,6 +469,8 @@ class LightDecoder: NSObject {
     var matchCounterBufferOdd: MTLBuffer?
     var matchCounterBufferEven: MTLBuffer?
     
+    var inPlaceTexture: UnsafeMutablePointer<MTLTexture>?
+    
     
     func setupMatchPreamble() {
         guard let library = self.library else {
@@ -477,6 +482,16 @@ class LightDecoder: NSObject {
         let constantValues = MTLFunctionConstantValues()
 //        constantValues.setConstantValue(&threshold, type: .char, index: 0)
 //        constantValues.setConstantValue(&preamble, type: .char, index: 1)
+        
+        guard let device = self.device else {
+            NSLog("no device")
+            return
+        }
+        
+        //   let blur = MPSImageGaussianBlur(device: device, sigma: 50)
+        //    let blur = MPSImageMedian(device: device, kernelDiameter: 21)
+        //  let blur = MPSImageBox(device: device, kernelWidth: 51, kernelHeight: 51)
+        blurFunction = MPSImageGaussianBlur(device: device, sigma: 20)
         do {
             matchPreambleFunction = try library.makeFunction(name: "matchPreamble", constantValues: constantValues)
         } catch {
@@ -484,37 +499,42 @@ class LightDecoder: NSObject {
         }
         
         bufferLength = 1920*1440
-        let  dataCodesArray: [UInt16] = [0x9556,0x9559,0x955a,0x9565,0x9566,0x9569,0x956a,0x9595,0x9596,0x9599,0x959a,0x95a5,0x95a6,0x95a9,0x95aa,0x9655,0x9656,0x9659,0x965a,0x9665,0x9666,0x9669,0x966a,0x9695,0x9696,0x9699,0x969a,0x96a5,0x96a6,0x96a9,0x96aa,0x9955]
+//        let  dataCodesArray: [UInt16] = [0x9556,0x9559,0x955a,0x9565,0x9566,0x9569,0x956a,0x9595,0x9596,0x9599,0x959a,0x95a5,0x95a6,0x95a9,0x95aa,0x9655,0x9656,0x9659,0x965a,0x9665,0x9666,0x9669,0x966a,0x9695,0x9696,0x9699,0x969a,0x96a5,0x96a6,0x96a9,0x96aa,0x9955]
+        
+        /* 12 bit codes */
+        let  dataCodesArray: [UInt16] = [0x956,0x959,0x95a,0x965,0x966,0x969,0x96a,0x995,0x996,0x999,0x99a,0x9a5,0x9a6,0x9a9,0x9aa,0xa55,0xa56,0xa59,0xa5a,0xa65,0xa66,0xa69,0xa6a,0xa95,0xa96,0xa99,0xa9a,0xaa5,0xaa6,0xaa9,0xaaa,0x955];
         let dataCodesPtr: UnsafeMutablePointer<UInt16> = UnsafeMutablePointer(mutating: dataCodesArray)
-        dataCodesBuffer = device?.makeBuffer(bytes: dataCodesPtr, length: dataCodesArray.count*2, options: .storageModeShared)
+        dataCodesBuffer = device.makeBuffer(bytes: dataCodesPtr, length: dataCodesArray.count*2, options: .storageModeShared)
 
-        matchBufferOdd = device?.makeBuffer(length: bufferLength*4, options: .storageModeShared)
-        dataBufferOdd = device?.makeBuffer(length: bufferLength*2, options: .storageModeShared)
-        baselineMinBufferOdd = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
-        baselineMaxBufferOdd = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
+        matchBufferOdd = device.makeBuffer(length: bufferLength*4, options: .storageModeShared)
+        dataBufferOdd = device.makeBuffer(length: bufferLength*2, options: .storageModeShared)
+        baselineMinBufferOdd = device.makeBuffer(length: bufferLength, options: .storageModeShared)
+        baselineMaxBufferOdd = device.makeBuffer(length: bufferLength, options: .storageModeShared)
         
 
-        matchBufferEven = device?.makeBuffer(length: bufferLength*4, options: .storageModeShared)
-        dataBufferEven = device?.makeBuffer(length: bufferLength*2, options: .storageModeShared)
-        baselineMinBufferEven = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
-        baselineMaxBufferEven = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
+        matchBufferEven = device.makeBuffer(length: bufferLength*4, options: .storageModeShared)
+        dataBufferEven = device.makeBuffer(length: bufferLength*2, options: .storageModeShared)
+        baselineMinBufferEven = device.makeBuffer(length: bufferLength, options: .storageModeShared)
+        baselineMaxBufferEven = device.makeBuffer(length: bufferLength, options: .storageModeShared)
         
-        dataMinBufferOdd = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
-        dataMaxBufferOdd = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
-        dataMinBufferEven = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
-        dataMaxBufferEven = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
+        dataMinBufferOdd = device.makeBuffer(length: bufferLength, options: .storageModeShared)
+        dataMaxBufferOdd = device.makeBuffer(length: bufferLength, options: .storageModeShared)
+        dataMinBufferEven = device.makeBuffer(length: bufferLength, options: .storageModeShared)
+        dataMaxBufferEven = device.makeBuffer(length: bufferLength, options: .storageModeShared)
         
-        matchCounterBufferOdd = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
-        matchCounterBufferEven = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
+        matchCounterBufferOdd = device.makeBuffer(length: bufferLength, options: .storageModeShared)
+        matchCounterBufferEven = device.makeBuffer(length: bufferLength, options: .storageModeShared)
         
-        self.minBuffer = device?.makeBuffer(length: bufferLength, options:.storageModeShared)
+        inPlaceTexture = UnsafeMutablePointer<MTLTexture>.allocate(capacity: 1)
+        
+        self.minBuffer = device.makeBuffer(length: bufferLength, options:.storageModeShared)
         if let minBuffer = self.minBuffer {
             let minArray = minBuffer.contents().assumingMemoryBound(to: UInt8.self)
             for i in 0..<bufferLength {
                 minArray[i] = 0xFF;
             }
         }
-        self.maxBuffer = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
+        self.maxBuffer = device.makeBuffer(length: bufferLength, options: .storageModeShared)
         
         
     }
@@ -788,36 +808,38 @@ class LightDecoder: NSObject {
 
         let descriptor = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .r8Unorm/*.a8Unorm*/, width: 1920, height: 1440, mipmapped: false)
         descriptor.usage = [.shaderRead, .shaderWrite]
-        let texture = imageBuffer.makeTexture(descriptor: descriptor, offset: 0, bytesPerRow: 1920)
- //       let outTexture = device.makeTexture(descriptor: descriptor)
+        guard var texture = imageBuffer.makeTexture(descriptor: descriptor, offset: 0, bytesPerRow: 1920) else {
+            NSLog("no texture")
+            return
+        }
+
+
+        guard let blurFunction = self.blurFunction else {
+            NSLog("no blur function")
+            return
+        }
+        blurFunction.encode(commandBuffer: commandBuffer, inPlaceTexture: &texture)
+
         
-        let blur = MPSImageGaussianBlur(device: device, sigma: 5)
-        let inPlaceTexture = UnsafeMutablePointer<MTLTexture>.allocate(capacity: 1)
-        inPlaceTexture.initialize(to: texture!)
-       blur.encode(commandBuffer: commandBuffer, inPlaceTexture: inPlaceTexture)
-      //  blur.encode(commandBuffer: commandBuffer, sourceTexture: texture!, destinationTexture: outTexture!)
-        
+
 //        commandBuffer.commit()
 //        commandBuffer.waitUntilCompleted()
-        
-   //     let ptr = UnsafeMutablePointer<UInt8>.allocate(capacity: 1920*1440)
-  //      texture!.getBytes(ptr, bytesPerRow: 1920, from: MTLRegion(origin: MTLOrigin(x: 0, y: 0, z: 0), size: MTLSize(width: 1920, height: 1440, depth: 1)), mipmapLevel: 0)
-   //     let imageArray = imageBuffer.contents().assumingMemoryBound(to: UInt8.self)
-  //      let image = UIImage.image(buffer: imageArray, length: 1920*1440, rowWidth: 1920)
+//        let imageArray = imageBuffer.contents().assumingMemoryBound(to: UInt8.self)
+//        let image = UIImage.image(buffer: imageArray, length: 1920*1440, rowWidth: 1920)
 
         
         
-        
+
         guard let matchPreambleFunction = self.matchPreambleFunction else {
             NSLog("Cannot make difference function")
             return
         }
-        
+
         guard let computeCommandEncoder = commandBuffer.makeComputeCommandEncoder() else {
             NSLog("Cannot make compute command encoder")
             return
         }
-        
+
         var computePipelineState: MTLComputePipelineState?
         do {
             computePipelineState = try device.makeComputePipelineState(function: matchPreambleFunction)
@@ -826,13 +848,13 @@ class LightDecoder: NSObject {
             computeCommandEncoder.endEncoding()
             return
         }
-        
+
         guard let pipelineState = computePipelineState else {
             NSLog("No compute pipeline state")
             computeCommandEncoder.endEncoding()
             return
         }
-        
+
         computeCommandEncoder.setBuffer(imageBuffer, offset: 0, index: 0)
         computeCommandEncoder.setBuffer(dataCodesBuffer, offset: 0, index: 1)
         computeCommandEncoder.setBuffer(actualDataBuffer, offset: 0, index: 2)
@@ -842,7 +864,7 @@ class LightDecoder: NSObject {
         computeCommandEncoder.setBuffer(baselineMinBuffer, offset: 0, index: 6)
         computeCommandEncoder.setBuffer(baselineMaxBuffer, offset: 0, index: 7)
         computeCommandEncoder.setBuffer(matchCounterBuffer, offset: 0, index: 8)
-        
+
         computeCommandEncoder.setBuffer(prevImageBuffer1, offset: 0, index: 9)
         computeCommandEncoder.setBuffer(prevImageBuffer2, offset: 0, index: 10)
         computeCommandEncoder.setBuffer(prevImageBuffer3, offset: 0, index: 11)
@@ -862,21 +884,21 @@ class LightDecoder: NSObject {
         computeCommandEncoder.setBuffer(prevImageBuffer17, offset: 0, index: 25)
         computeCommandEncoder.setBuffer(prevImageBuffer18, offset: 0, index: 26)
         computeCommandEncoder.setBuffer(prevImageBuffer19, offset: 0, index: 27)
-        
+
 
         computeCommandEncoder.setComputePipelineState(pipelineState)
-        
+
         let threadExecutionWidth = pipelineState.threadExecutionWidth
-        NSLog("threadExecutionWidth: %d", threadExecutionWidth)
+  //      NSLog("threadExecutionWidth: %d", threadExecutionWidth)
         let threadsPerGroup = MTLSize(width: threadExecutionWidth, height: 1, depth: 1)
-        
+
         let numThreadGroups = MTLSize(width: /*1*/(length/4/*+threadExecutionWidth*/)/threadExecutionWidth, height: 1, depth: 1)
         computeCommandEncoder.dispatchThreadgroups(numThreadGroups, threadsPerThreadgroup: threadsPerGroup)
         computeCommandEncoder.endEncoding()
         
         commandBuffer.commit()
         commandBuffer.waitUntilCompleted()
-        NSLog("preamble match complete")
+ 
         
         frameCountForImageRender += 1
         if frameCountForImageRender == 20 {
@@ -1234,7 +1256,7 @@ extension UIImage {
         let colorRowWidthBytes = rowWidth * bytesPerPixel
         
         let colorBuffer = UnsafeMutablePointer<UInt8>.allocate(capacity: colorBufferLength)
-        let targetBit: UInt32 = 1 << 0
+        let targetBit: UInt32 = 1 << 0 /* which code are we looking for */
         for i in 0..<length {
             if buffer[i] & targetBit != 0  {
                 colorBuffer[i*bytesPerPixel + greenByte] = 0xFF;

@@ -19,6 +19,7 @@
 		5BC4342A2203576E0029305F /* LightDecoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5BC434292203576E0029305F /* LightDecoder.swift */; };
 		5BC4347A2208D7470029305F /* LightAnchorManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5BC434792208D7470029305F /* LightAnchorManager.swift */; };
 		5BC4347C2208F4D60029305F /* SettingsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5BC4347B2208F4D60029305F /* SettingsViewController.swift */; };
+		5BE4562622331058006BC514 /* Thread.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5BE4562522331058006BC514 /* Thread.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -57,6 +58,7 @@
 		5BC434292203576E0029305F /* LightDecoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LightDecoder.swift; sourceTree = "<group>"; };
 		5BC434792208D7470029305F /* LightAnchorManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LightAnchorManager.swift; sourceTree = "<group>"; };
 		5BC4347B2208F4D60029305F /* SettingsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsViewController.swift; sourceTree = "<group>"; };
+		5BE4562522331058006BC514 /* Thread.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Thread.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -115,6 +117,7 @@
 				5BC434792208D7470029305F /* LightAnchorManager.swift */,
 				5B6E33FE21B874B4000B31E6 /* LocationView.swift */,
 				5B6E340021B9C8A2000B31E6 /* Plane.swift */,
+				5BE4562522331058006BC514 /* Thread.swift */,
 				5B6E33D721B6E24A000B31E6 /* Assets.xcassets */,
 				5B6E33D921B6E24A000B31E6 /* LaunchScreen.storyboard */,
 				5B6E33DC21B6E24A000B31E6 /* Info.plist */,
@@ -277,6 +280,7 @@
 				5B6E33FF21B874B4000B31E6 /* LocationView.swift in Sources */,
 				5B6E340121B9C8A2000B31E6 /* Plane.swift in Sources */,
 				5B6E33D121B6E248000B31E6 /* AppDelegate.swift in Sources */,
+				5BE4562622331058006BC514 /* Thread.swift in Sources */,
 				5BC4347A2208D7470029305F /* LightAnchorManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
