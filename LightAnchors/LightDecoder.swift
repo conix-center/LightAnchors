@@ -56,6 +56,7 @@ class LightDecoder: NSObject {
     var differenceFunction:MTLFunction?
     var maxFunction: MTLFunction?
     var matchPreambleFunction: MTLFunction?
+    var blurFunction: MPSImageGaussianBlur?
     
     var delegate: LightDecoderDelegate?
     
@@ -483,38 +484,44 @@ class LightDecoder: NSObject {
             NSLog("Error creating match preamble function")
         }
         
+        guard let device = self.device else {
+            NSLog("no device")
+            return
+        }
+        blurFunction = MPSImageGaussianBlur(device: device, sigma: 5)
+        
         bufferLength = 1920*1440
         let  dataCodesArray: [UInt16] = [0x9556,0x9559,0x955a,0x9565,0x9566,0x9569,0x956a,0x9595,0x9596,0x9599,0x959a,0x95a5,0x95a6,0x95a9,0x95aa,0x9655,0x9656,0x9659,0x965a,0x9665,0x9666,0x9669,0x966a,0x9695,0x9696,0x9699,0x969a,0x96a5,0x96a6,0x96a9,0x96aa,0x9955]
         let dataCodesPtr: UnsafeMutablePointer<UInt16> = UnsafeMutablePointer(mutating: dataCodesArray)
-        dataCodesBuffer = device?.makeBuffer(bytes: dataCodesPtr, length: dataCodesArray.count*2, options: .storageModeShared)
+        dataCodesBuffer = device.makeBuffer(bytes: dataCodesPtr, length: dataCodesArray.count*2, options: .storageModeShared)
 
-        matchBufferOdd = device?.makeBuffer(length: bufferLength*4, options: .storageModeShared)
-        dataBufferOdd = device?.makeBuffer(length: bufferLength*2, options: .storageModeShared)
-        baselineMinBufferOdd = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
-        baselineMaxBufferOdd = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
+        matchBufferOdd = device.makeBuffer(length: bufferLength*4, options: .storageModeShared)
+        dataBufferOdd = device.makeBuffer(length: bufferLength*2, options: .storageModeShared)
+        baselineMinBufferOdd = device.makeBuffer(length: bufferLength, options: .storageModeShared)
+        baselineMaxBufferOdd = device.makeBuffer(length: bufferLength, options: .storageModeShared)
         
 
-        matchBufferEven = device?.makeBuffer(length: bufferLength*4, options: .storageModeShared)
-        dataBufferEven = device?.makeBuffer(length: bufferLength*2, options: .storageModeShared)
-        baselineMinBufferEven = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
-        baselineMaxBufferEven = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
+        matchBufferEven = device.makeBuffer(length: bufferLength*4, options: .storageModeShared)
+        dataBufferEven = device.makeBuffer(length: bufferLength*2, options: .storageModeShared)
+        baselineMinBufferEven = device.makeBuffer(length: bufferLength, options: .storageModeShared)
+        baselineMaxBufferEven = device.makeBuffer(length: bufferLength, options: .storageModeShared)
         
-        dataMinBufferOdd = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
-        dataMaxBufferOdd = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
-        dataMinBufferEven = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
-        dataMaxBufferEven = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
+        dataMinBufferOdd = device.makeBuffer(length: bufferLength, options: .storageModeShared)
+        dataMaxBufferOdd = device.makeBuffer(length: bufferLength, options: .storageModeShared)
+        dataMinBufferEven = device.makeBuffer(length: bufferLength, options: .storageModeShared)
+        dataMaxBufferEven = device.makeBuffer(length: bufferLength, options: .storageModeShared)
         
-        matchCounterBufferOdd = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
-        matchCounterBufferEven = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
+        matchCounterBufferOdd = device.makeBuffer(length: bufferLength, options: .storageModeShared)
+        matchCounterBufferEven = device.makeBuffer(length: bufferLength, options: .storageModeShared)
         
-        self.minBuffer = device?.makeBuffer(length: bufferLength, options:.storageModeShared)
+        self.minBuffer = device.makeBuffer(length: bufferLength, options:.storageModeShared)
         if let minBuffer = self.minBuffer {
             let minArray = minBuffer.contents().assumingMemoryBound(to: UInt8.self)
             for i in 0..<bufferLength {
                 minArray[i] = 0xFF;
             }
         }
-        self.maxBuffer = device?.makeBuffer(length: bufferLength, options: .storageModeShared)
+        self.maxBuffer = device.makeBuffer(length: bufferLength, options: .storageModeShared)
         
         
     }
@@ -788,13 +795,18 @@ class LightDecoder: NSObject {
 
         let descriptor = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .r8Unorm/*.a8Unorm*/, width: 1920, height: 1440, mipmapped: false)
         descriptor.usage = [.shaderRead, .shaderWrite]
-        let texture = imageBuffer.makeTexture(descriptor: descriptor, offset: 0, bytesPerRow: 1920)
+        guard var texture = imageBuffer.makeTexture(descriptor: descriptor, offset: 0, bytesPerRow: 1920) else {
+            NSLog("no texture")
+            return
+        }
  //       let outTexture = device.makeTexture(descriptor: descriptor)
         
-        let blur = MPSImageGaussianBlur(device: device, sigma: 5)
-        let inPlaceTexture = UnsafeMutablePointer<MTLTexture>.allocate(capacity: 1)
-        inPlaceTexture.initialize(to: texture!)
-       blur.encode(commandBuffer: commandBuffer, inPlaceTexture: inPlaceTexture)
+        guard let blurFunction = self.blurFunction else {
+            NSLog("no blur function")
+            return
+        }
+
+       blurFunction.encode(commandBuffer: commandBuffer, inPlaceTexture: &texture)
       //  blur.encode(commandBuffer: commandBuffer, sourceTexture: texture!, destinationTexture: outTexture!)
         
 //        commandBuffer.commit()
