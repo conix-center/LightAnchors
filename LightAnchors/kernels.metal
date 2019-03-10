@@ -17,7 +17,7 @@
 #define NUM_DATA_CODES 32
 #define NUM_DATA_BUFFERS 16
 #define NUM_BASELINE_BUFFERS 4
-#define SNR_THRESHOLD 3
+#define SNR_THRESHOLD 1.5
 
 
 
@@ -121,7 +121,7 @@ kernel void matchPreamble(
                 baselineMinValue = min(baselineMinValue, buffer);
                 baselineMaxValue = max(baselineMaxValue, buffer);
             }
-            uchar4 snr = (maxValue-minValue)/ (baselineMaxValue-baselineMinValue);
+            half4 snr = (half4)(maxValue-minValue)/ (half4)(baselineMaxValue-baselineMinValue);
             uint4 acceptMask = (uint4)(snr > SNR_THRESHOLD) * 0xFFFFFFFF;
             uint4 acceptedMatches = matches & acceptMask;
             matchBuffer[id] = acceptedMatches;

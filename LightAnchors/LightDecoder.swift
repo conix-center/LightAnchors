@@ -491,7 +491,7 @@ class LightDecoder: NSObject {
         //   let blur = MPSImageGaussianBlur(device: device, sigma: 50)
         //    let blur = MPSImageMedian(device: device, kernelDiameter: 21)
         //  let blur = MPSImageBox(device: device, kernelWidth: 51, kernelHeight: 51)
-        blurFunction = MPSImageGaussianBlur(device: device, sigma: 20)
+        blurFunction = MPSImageGaussianBlur(device: device, sigma: 25)
         do {
             matchPreambleFunction = try library.makeFunction(name: "matchPreamble", constantValues: constantValues)
         } catch {
