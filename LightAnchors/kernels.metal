@@ -106,9 +106,8 @@ kernel void matchPreamble(
         uint4 matches = 0;
         for (int i=0; i<NUM_DATA_CODES; i++) {
             ushort dataCode = dataCodesBuffer[i];
-            ushort4 match = (ushort4)((actualDataBuffer[id] ^ dataCode) == 0);
-            matches = matches << 1;
-            matches |= (uint4)match;
+            uint4 match = (uint4)((actualDataBuffer[id] ^ dataCode) == 0);
+            matches = matches | (match << i);
             
         }
 
