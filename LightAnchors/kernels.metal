@@ -17,7 +17,7 @@
 #define NUM_DATA_CODES 32
 #define NUM_DATA_BUFFERS 16
 #define NUM_BASELINE_BUFFERS 4
-#define SNR_THRESHOLD 2
+#define SNR_THRESHOLD 3
 
 
 
@@ -72,28 +72,28 @@ kernel void matchPreamble(
         baselineBuffers[3] = prevImage16[id];
         
         uchar4 imageBuffers[NUM_DATA_BUFFERS];
-        imageBuffers[0] = prevImage15[id];
-        imageBuffers[1] = prevImage14[id];
-        imageBuffers[2] = prevImage13[id];
-        imageBuffers[3] = prevImage12[id];
-        imageBuffers[4] = prevImage11[id];
-        imageBuffers[5] = prevImage10[id];
-        imageBuffers[6] = prevImage9[id];
-        imageBuffers[7] = prevImage8[id];
-        imageBuffers[8] = prevImage7[id];
-        imageBuffers[9] = prevImage6[id];
-        imageBuffers[10] = prevImage5[id];
-        imageBuffers[11] = prevImage4[id];
-        imageBuffers[12] = prevImage3[id];
-        imageBuffers[13] = prevImage2[id];
-        imageBuffers[14] = prevImage1[id];
-        imageBuffers[15] = image[id];
+//        imageBuffers[0] = prevImage15[id];
+//        imageBuffers[1] = prevImage14[id];
+//        imageBuffers[2] = prevImage13[id];
+//        imageBuffers[3] = prevImage12[id];
+        imageBuffers[0] = prevImage11[id];
+        imageBuffers[1] = prevImage10[id];
+        imageBuffers[2] = prevImage9[id];
+        imageBuffers[3] = prevImage8[id];
+        imageBuffers[4] = prevImage7[id];
+        imageBuffers[5] = prevImage6[id];
+        imageBuffers[6] = prevImage5[id];
+        imageBuffers[7] = prevImage4[id];
+        imageBuffers[8] = prevImage3[id];
+        imageBuffers[9] = prevImage2[id];
+        imageBuffers[10] = prevImage1[id];
+        imageBuffers[11] = image[id];
         
         /* calculate threshold */
         /* looking at previous images and current images means that the first bit of data we are looking for must be 1 */
         uchar4 minValue = min(0xFF, image[id]);
         uchar4 maxValue = max(0, image[id]);
-        for (int i = 10; i<16; i++) {
+        for (int i = 0; i<12; i++) {
             uchar4 buffer = imageBuffers[i];
             minValue = min(minValue, buffer);
             maxValue = max(maxValue, buffer);
@@ -103,15 +103,13 @@ kernel void matchPreamble(
         ushort4 bit = (ushort4)(image[id] > thresh);
         
         actualDataBuffer[id] = (actualDataBuffer[id] << 1) | bit;
-      //  ushort4 restrictedActualData = actualDataBuffer[id] & 0x0FFF;
-        ushort4 restrictedActualData = actualDataBuffer[id];
+        ushort4 restrictedActualData = actualDataBuffer[id] & 0x0FFF;
+      //  ushort4 restrictedActualData = actualDataBuffer[id];
         uint4 matches = 0;
         for (int i=0; i<NUM_DATA_CODES; i++) {
             ushort dataCode = dataCodesBuffer[i];
-            ushort4 match = (ushort4)((restrictedActualData ^ dataCode) == 0);
-            matches = matches << 1;
-            matches |= (uint4)match;
-            
+            uint4 match = (uint4)((restrictedActualData ^ dataCode) == 0);
+            matches = matches | (match << i);
         }
 
         
@@ -124,7 +122,7 @@ kernel void matchPreamble(
                 baselineMaxValue = max(baselineMaxValue, buffer);
             }
             uchar4 snr = (maxValue-minValue)/ (baselineMaxValue-baselineMinValue);
-            uint4 acceptMask = (uint4)(snr > SNR_THRESHOLD) * 0xFFFF;
+            uint4 acceptMask = (uint4)(snr > SNR_THRESHOLD) * 0xFFFFFFFF;
             uint4 acceptedMatches = matches & acceptMask;
             matchBuffer[id] = acceptedMatches;
         }
