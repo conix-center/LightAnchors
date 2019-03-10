@@ -15,6 +15,7 @@
 		5B6E33F121B6E24A000B31E6 /* LightAnchorsUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B6E33F021B6E24A000B31E6 /* LightAnchorsUITests.swift */; };
 		5B6E33FF21B874B4000B31E6 /* LocationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B6E33FE21B874B4000B31E6 /* LocationView.swift */; };
 		5B6E340121B9C8A2000B31E6 /* Plane.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B6E340021B9C8A2000B31E6 /* Plane.swift */; };
+		5BA610962235B53F00C3C000 /* ClusterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5BA610952235B53F00C3C000 /* ClusterView.swift */; };
 		5BBEEA28220CB42E008F7665 /* kernels.metal in Sources */ = {isa = PBXBuildFile; fileRef = 5BBEEA27220CB42E008F7665 /* kernels.metal */; };
 		5BC4342A2203576E0029305F /* LightDecoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5BC434292203576E0029305F /* LightDecoder.swift */; };
 		5BC4347A2208D7470029305F /* LightAnchorManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5BC434792208D7470029305F /* LightAnchorManager.swift */; };
@@ -54,6 +55,7 @@
 		5B6E33F221B6E24A000B31E6 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		5B6E33FE21B874B4000B31E6 /* LocationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationView.swift; sourceTree = "<group>"; };
 		5B6E340021B9C8A2000B31E6 /* Plane.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Plane.swift; sourceTree = "<group>"; };
+		5BA610952235B53F00C3C000 /* ClusterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClusterView.swift; sourceTree = "<group>"; };
 		5BBEEA27220CB42E008F7665 /* kernels.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = kernels.metal; sourceTree = "<group>"; };
 		5BC434292203576E0029305F /* LightDecoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LightDecoder.swift; sourceTree = "<group>"; };
 		5BC434792208D7470029305F /* LightAnchorManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LightAnchorManager.swift; sourceTree = "<group>"; };
@@ -111,6 +113,7 @@
 			children = (
 				5B6E33D021B6E248000B31E6 /* AppDelegate.swift */,
 				5B6E33D221B6E248000B31E6 /* ViewController.swift */,
+				5BA610952235B53F00C3C000 /* ClusterView.swift */,
 				5BC4347B2208F4D60029305F /* SettingsViewController.swift */,
 				5BC434292203576E0029305F /* LightDecoder.swift */,
 				5BBEEA27220CB42E008F7665 /* kernels.metal */,
@@ -276,6 +279,7 @@
 				5BC4342A2203576E0029305F /* LightDecoder.swift in Sources */,
 				5B6E33D321B6E248000B31E6 /* ViewController.swift in Sources */,
 				5BBEEA28220CB42E008F7665 /* kernels.metal in Sources */,
+				5BA610962235B53F00C3C000 /* ClusterView.swift in Sources */,
 				5BC4347C2208F4D60029305F /* SettingsViewController.swift in Sources */,
 				5B6E33FF21B874B4000B31E6 /* LocationView.swift in Sources */,
 				5B6E340121B9C8A2000B31E6 /* Plane.swift in Sources */,

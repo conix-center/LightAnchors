@@ -72,6 +72,8 @@ class ViewController: UIViewController {
     
     let imageViewBackgroundColor = UIColor(red: 0, green: 0, blue: 0, alpha: 0.95)
     
+    let clusterView = ClusterView()
+    
     
     init () {
         super.init(nibName: nil, bundle: nil)
@@ -145,6 +147,13 @@ class ViewController: UIViewController {
         frameRateLabel.topAnchor.constraint(equalTo: cameraConfigLabel.bottomAnchor).isActive = true
         frameRateLabel.heightAnchor.constraint(equalTo: numConnectionsLabel.heightAnchor).isActive = true
         
+        view.addSubview(clusterView)
+        clusterView.translatesAutoresizingMaskIntoConstraints = false
+        clusterView.topAnchor.constraint(equalTo: sceneView.topAnchor).isActive = true
+        clusterView.bottomAnchor.constraint(equalTo: sceneView.bottomAnchor).isActive = true
+        clusterView.leftAnchor.constraint(equalTo: sceneView.leftAnchor).isActive = true
+        clusterView.rightAnchor.constraint(equalTo: sceneView.rightAnchor).isActive = true
+        
         view.addSubview(buttonStackView)
         buttonStackView.translatesAutoresizingMaskIntoConstraints = false
         buttonStackView.leftAnchor.constraint(equalTo: view.leftAnchor, constant: 15).isActive = true
@@ -181,6 +190,15 @@ class ViewController: UIViewController {
         imageView.bottomAnchor.constraint(equalTo: sceneView.bottomAnchor).isActive = true
         imageView.leftAnchor.constraint(equalTo: sceneView.leftAnchor).isActive = true
         imageView.rightAnchor.constraint(equalTo: sceneView.rightAnchor).isActive = true
+        
+        view.addSubview(clusterView)
+        clusterView.translatesAutoresizingMaskIntoConstraints = false
+        clusterView.topAnchor.constraint(equalTo: sceneView.topAnchor).isActive = true
+        clusterView.bottomAnchor.constraint(equalTo: sceneView.bottomAnchor).isActive = true
+        clusterView.leftAnchor.constraint(equalTo: sceneView.leftAnchor).isActive = true
+        clusterView.rightAnchor.constraint(equalTo: sceneView.rightAnchor).isActive = true
+        
+
         
 //        view.addSubview(colorView)
 //        colorView.translatesAutoresizingMaskIntoConstraints = false
@@ -568,6 +586,11 @@ extension ViewController: ARSessionDelegate {
             motionDataDict.setValue(Date().timeIntervalSince1970, forKey: "time")
             motionDataArray?.add(motionDataDict)
             
+//            let width = CVPixelBufferGetWidth(frame.capturedImage)
+//            let height = CVPixelBufferGetHeight(frame.capturedImage)
+//            NSLog("frame width: \(width) height: \(height)")
+            
+            
             savePixelBuffer(frame.capturedImage)
         }
         
@@ -817,6 +840,16 @@ extension ViewController: LightDecoderDelegate {
     func lightDecoder(_: LightDecoder, didUpdateResultImage resultImage: UIImage) {
         NSLog("received result image")
         imageView.image = resultImage
+    }
+    
+    func lightDecoder(_: LightDecoder, didUpdateMeanX meanX: Float, meanY: Float, stdDevX: Float, stdDevY: Float) {
+        let radius:CGFloat = CGFloat((stdDevX + stdDevY) / 2.0)
+        let scale = CGFloat(clusterView.frame.size.height / 1920)
+        let widthScaled = 1440*scale
+        let xOffset = (widthScaled-clusterView.frame.size.width)/2.0
+        let meanXScaled = scale * CGFloat(meanX)
+        let meanYScaled = scale * CGFloat(meanY)
+        self.clusterView.update(location: CGPoint(x: CGFloat(meanXScaled-xOffset), y: CGFloat(meanYScaled)), radius: radius)
     }
     
     

@@ -14,6 +14,7 @@ import MetalKit
 protocol LightDecoderDelegate {
     
     func lightDecoder(_ :LightDecoder, didUpdateResultImage resultImage: UIImage)
+    func lightDecoder(_ :LightDecoder, didUpdateMeanX meanX: Float, meanY: Float, stdDevX: Float, stdDevY: Float)
 }
 
 
@@ -942,28 +943,21 @@ class LightDecoder: NSObject {
                 }
             }
             
-            var dict = Dictionary<UInt32, Int>()
-            for i in 0..<1920*1440 {
-                let pixel: UInt32 = dataImageArray[i]
-                if pixel != 0 {
-                    if let count = dict[pixel] {
-                        dict[pixel] = count + 1
-                    } else {
-                        dict[pixel] = 1
-                    }
-                }
-            }
-            
-            for key in dict.keys {
-                if let count = dict[key] {
-                    NSLog("code: 0x%x count: %d", key, count)
-                }
-            }
+
             
             let rotatedImageArray = UnsafeMutablePointer<UInt32>.allocate(capacity: length)
             for row in 0..<1440 {
                 for column in 0..<1920 {
                     rotatedImageArray[column*1440 + (1439-row)] = dataImageArray[row*1920+column]
+                }
+            }
+            
+            let codeMask = self.findMostCommonCodeMask(in: rotatedImageArray)
+            if codeMask.nonzeroBitCount == 1 {
+                let (meanX, meanY, stdDevX, stdDevY) = self.calculateMeanAndStdDev(from: rotatedImageArray, codeMask: codeMask )
+                NSLog("meanX: \(meanX), meanY: \(meanY) stdDevX: \(stdDevX) stdDevY: \(stdDevY)")
+                DispatchQueue.main.async {
+                    self.delegate?.lightDecoder(self, didUpdateMeanX: meanX, meanY: meanY, stdDevX: stdDevX, stdDevY: stdDevY)
                 }
             }
             
@@ -1203,6 +1197,70 @@ class LightDecoder: NSObject {
         
 
         
+    }
+    
+    
+    
+    func findMostCommonCodeMask(in buffer: UnsafeMutablePointer<UInt32>) -> UInt32 {
+        var dict = Dictionary<UInt32, Int>()
+        for i in 0..<1920*1440 {
+            let pixel: UInt32 = buffer[i]
+            if pixel != 0 {
+                if let count = dict[pixel] {
+                    dict[pixel] = count + 1
+                } else {
+                    dict[pixel] = 1
+                }
+            }
+        }
+        
+        var maxCodeIndex: UInt32 = 0
+        var maxCodeCount: Int = 0
+        for key in dict.keys {
+            if let count = dict[key] {
+                //NSLog("code: 0x%x count: %d", key, count)
+                if count > maxCodeCount {
+                    maxCodeIndex = key
+                    maxCodeCount = count
+                }
+            }
+        }
+        
+        return maxCodeIndex
+    }
+    
+    
+    func calculateMeanAndStdDev(from buffer: UnsafeMutablePointer<UInt32>, codeMask: UInt32) -> (meanX: Float, meanY: Float, stdDevX: Float, stdDevY: Float) {
+        var sumX = 0
+        var sumY = 0
+        var count = 0
+        for y in 0..<1920 {
+            for x in 0..<1440 {
+                if buffer[y*1440+x] == codeMask {
+                    count += 1
+                    sumX += x
+                    sumY += y
+                }
+            }
+        }
+        let meanX = Float(sumX) / Float(count)
+        let meanY = Float(sumY) / Float(count)
+        
+        var sumSquaredX: Float = 0
+        var sumSquaredY: Float = 0
+        for y in 0..<1920 {
+            for x in 0..<1440 {
+                if buffer[y*1440+x] == codeMask {
+                    sumSquaredX += pow(Float(x)-meanX, 2)
+                    sumSquaredY += pow(Float(y)-meanY, 2)
+
+                }
+            }
+        }
+        let stdDevX = sqrt(sumSquaredX / Float(count))
+        let stdDevY = sqrt(sumSquaredY / Float(count))
+        
+        return (meanX, meanY, stdDevX, stdDevY)
     }
     
     
