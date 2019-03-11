@@ -14,7 +14,7 @@ import MetalKit
 protocol LightDecoderDelegate {
     
     func lightDecoder(_ :LightDecoder, didUpdateResultImage resultImage: UIImage)
-    func lightDecoder(_ :LightDecoder, didUpdateMeanX meanX: Float, meanY: Float, stdDevX: Float, stdDevY: Float)
+    func lightDecoder(_ :LightDecoder, didUpdate codeIndex:Int, meanX: Float, meanY: Float, stdDevX: Float, stdDevY: Float)
 }
 
 
@@ -904,7 +904,7 @@ class LightDecoder: NSObject {
  
         
         frameCountForImageRender += 1
-        if frameCountForImageRender == 20 {
+        if frameCountForImageRender == 24 {
             frameCountForImageRender = 0
             updateResultImage()
         }
@@ -953,14 +953,24 @@ class LightDecoder: NSObject {
                 }
             }
             
-            let codeMask = self.findMostCommonCodeMask(in: rotatedImageArray)
-            if codeMask.nonzeroBitCount == 1 {
-                let (meanX, meanY, stdDevX, stdDevY) = self.calculateMeanAndStdDev(from: rotatedImageArray, codeMask: codeMask )
-                NSLog("meanX: \(meanX), meanY: \(meanY) stdDevX: \(stdDevX) stdDevY: \(stdDevY)")
+//            let codeMask = self.findMostCommonCodeMask(in: rotatedImageArray)
+//            if codeMask.nonzeroBitCount == 1 {
+//                let (meanX, meanY, stdDevX, stdDevY) = self.calculateMeanAndStdDev(from: rotatedImageArray, codeMask: codeMask )
+//                NSLog("meanX: \(meanX), meanY: \(meanY) stdDevX: \(stdDevX) stdDevY: \(stdDevY)")
+//                DispatchQueue.main.async {
+//                    self.delegate?.lightDecoder(self, didUpdateMeanX: meanX, meanY: meanY, stdDevX: stdDevX, stdDevY: stdDevY)
+//                }
+//            }
+            
+
+                let (meanX1, meanY1, stdDevX1, stdDevY1) = self.calculateMeanAndStdDev(from: rotatedImageArray, codeMask: 1 )
+            let (meanX2, meanY2, stdDevX2, stdDevY2) = self.calculateMeanAndStdDev(from: rotatedImageArray, codeMask: 2 )
+           //     NSLog("meanX: \(meanX), meanY: \(meanY) stdDevX: \(stdDevX) stdDevY: \(stdDevY)")
                 DispatchQueue.main.async {
-                    self.delegate?.lightDecoder(self, didUpdateMeanX: meanX, meanY: meanY, stdDevX: stdDevX, stdDevY: stdDevY)
+                    self.delegate?.lightDecoder(self, didUpdate: 1, meanX: meanX1, meanY: meanY1, stdDevX: stdDevX1, stdDevY: stdDevY1)
+                    self.delegate?.lightDecoder(self, didUpdate: 2, meanX: meanX2, meanY: meanY2, stdDevX: stdDevX2, stdDevY: stdDevY2)
                 }
-            }
+            
             
             if let image = UIImage.colorImage(buffer: rotatedImageArray, length: length, rowWidth: 1440) {
                 DispatchQueue.main.async {

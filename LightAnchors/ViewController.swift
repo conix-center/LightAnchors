@@ -50,7 +50,8 @@ class ViewController: UIViewController {
     //    var lightAnchorLabel = UILabel()
     let buttonStackView = UIStackView()
     var captureButton: UIButton = UIButton()
-    let testButton = UIButton()
+//    let testButton = UIButton()
+    let showPixelsButton = UIButton()
     
     /* json logging */
     var captureId: Int = 0
@@ -72,7 +73,8 @@ class ViewController: UIViewController {
     
     let imageViewBackgroundColor = UIColor(red: 0, green: 0, blue: 0, alpha: 0.95)
     
-    let clusterView = ClusterView()
+    let clusterView1 = ClusterView()
+    let clusterView2 = ClusterView()
     
     
     init () {
@@ -115,71 +117,92 @@ class ViewController: UIViewController {
         trackingStateLabel.heightAnchor.constraint(equalToConstant: 50)
         
         
-        view.addSubview(numConnectionsLabel)
-        numConnectionsLabel.translatesAutoresizingMaskIntoConstraints = false
-        numConnectionsLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 10).isActive = true
-        numConnectionsLabel.topAnchor.constraint(equalTo: view.layoutMarginsGuide.topAnchor).isActive = true
-        numConnectionsLabel.heightAnchor.constraint(equalToConstant: 30).isActive = true
-        numConnectionsLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -10).isActive = true
+//        view.addSubview(numConnectionsLabel)
+//        numConnectionsLabel.translatesAutoresizingMaskIntoConstraints = false
+//        numConnectionsLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 10).isActive = true
+//        numConnectionsLabel.topAnchor.constraint(equalTo: view.layoutMarginsGuide.topAnchor).isActive = true
+//        numConnectionsLabel.heightAnchor.constraint(equalToConstant: 30).isActive = true
+//        numConnectionsLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -10).isActive = true
         
-        view.addSubview(lightDataLabel)
-        lightDataLabel.translatesAutoresizingMaskIntoConstraints = false
-        lightDataLabel.leadingAnchor.constraint(equalTo: numConnectionsLabel.leadingAnchor).isActive = true
-        lightDataLabel.topAnchor.constraint(equalTo: numConnectionsLabel.topAnchor).isActive = true
-        lightDataLabel.heightAnchor.constraint(equalTo: numConnectionsLabel.heightAnchor).isActive = true
-        lightDataLabel.trailingAnchor.constraint(equalTo: numConnectionsLabel.trailingAnchor).isActive = true
+//        view.addSubview(lightDataLabel)
+//        lightDataLabel.translatesAutoresizingMaskIntoConstraints = false
+//        lightDataLabel.leadingAnchor.constraint(equalTo: numConnectionsLabel.leadingAnchor).isActive = true
+//        lightDataLabel.topAnchor.constraint(equalTo: numConnectionsLabel.topAnchor).isActive = true
+//        lightDataLabel.heightAnchor.constraint(equalTo: numConnectionsLabel.heightAnchor).isActive = true
+//        lightDataLabel.trailingAnchor.constraint(equalTo: numConnectionsLabel.trailingAnchor).isActive = true
         
         lightDataLabel.textColor = UIColor.red
         lightDataLabel.textAlignment = .right
         
-        view.addSubview(cameraConfigLabel)
-        cameraConfigLabel.translatesAutoresizingMaskIntoConstraints = false
-        cameraConfigLabel.leadingAnchor.constraint(equalTo: numConnectionsLabel.leadingAnchor).isActive = true
-        cameraConfigLabel.topAnchor.constraint(equalTo: numConnectionsLabel.bottomAnchor).isActive = true
-        cameraConfigLabel.heightAnchor.constraint(equalTo: numConnectionsLabel.heightAnchor).isActive = true
-        cameraConfigLabel.trailingAnchor.constraint(equalTo: numConnectionsLabel.trailingAnchor).isActive = true
-        cameraConfigLabel.textColor = UIColor.red
+//        view.addSubview(cameraConfigLabel)
+//        cameraConfigLabel.translatesAutoresizingMaskIntoConstraints = false
+//        cameraConfigLabel.leadingAnchor.constraint(equalTo: numConnectionsLabel.leadingAnchor).isActive = true
+//        cameraConfigLabel.topAnchor.constraint(equalTo: numConnectionsLabel.bottomAnchor).isActive = true
+//        cameraConfigLabel.heightAnchor.constraint(equalTo: numConnectionsLabel.heightAnchor).isActive = true
+//        cameraConfigLabel.trailingAnchor.constraint(equalTo: numConnectionsLabel.trailingAnchor).isActive = true
+//        cameraConfigLabel.textColor = UIColor.red
         
         view.addSubview(frameRateLabel)
         frameRateLabel.translatesAutoresizingMaskIntoConstraints = false
         frameRateLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 10).isActive = true
         frameRateLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor).isActive = true
-        frameRateLabel.topAnchor.constraint(equalTo: cameraConfigLabel.bottomAnchor).isActive = true
-        frameRateLabel.heightAnchor.constraint(equalTo: numConnectionsLabel.heightAnchor).isActive = true
+       // frameRateLabel.topAnchor.constraint(equalTo: cameraConfigLabel.bottomAnchor).isActive = true
+        frameRateLabel.topAnchor.constraint(equalTo: view.layoutMarginsGuide.topAnchor).isActive = true
+//        frameRateLabel.heightAnchor.constraint(equalTo: numConnectionsLabel.heightAnchor).isActive = true
+        frameRateLabel.heightAnchor.constraint(equalToConstant: 30).isActive = true
         
-        view.addSubview(clusterView)
-        clusterView.translatesAutoresizingMaskIntoConstraints = false
-        clusterView.topAnchor.constraint(equalTo: sceneView.topAnchor).isActive = true
-        clusterView.bottomAnchor.constraint(equalTo: sceneView.bottomAnchor).isActive = true
-        clusterView.leftAnchor.constraint(equalTo: sceneView.leftAnchor).isActive = true
-        clusterView.rightAnchor.constraint(equalTo: sceneView.rightAnchor).isActive = true
+
         
         view.addSubview(buttonStackView)
         buttonStackView.translatesAutoresizingMaskIntoConstraints = false
         buttonStackView.leftAnchor.constraint(equalTo: view.leftAnchor, constant: 15).isActive = true
         buttonStackView.rightAnchor.constraint(equalTo: view.rightAnchor, constant: -15).isActive = true
         buttonStackView.bottomAnchor.constraint(equalTo: view.layoutMarginsGuide.bottomAnchor, constant: -30).isActive = true
-        buttonStackView.heightAnchor.constraint(equalTo: view.heightAnchor, multiplier: 0.08).isActive = true
+        if UI_USER_INTERFACE_IDIOM() == .pad {
+            buttonStackView.heightAnchor.constraint(equalTo: view.heightAnchor, multiplier: 0.04).isActive = true
+        } else {
+            buttonStackView.heightAnchor.constraint(equalTo: view.heightAnchor, multiplier: 0.08).isActive = true
+        }
         
         buttonStackView.addArrangedSubview(captureButton)
-        buttonStackView.addArrangedSubview(testButton)
+     //   buttonStackView.addArrangedSubview(testButton)
+        buttonStackView.addArrangedSubview(showPixelsButton)
         buttonStackView.axis = .horizontal
         buttonStackView.alignment = .center
         buttonStackView.distribution = .equalSpacing
         
-        captureButton.widthAnchor.constraint(equalTo: view.widthAnchor, multiplier: 0.4).isActive = true
+        if UI_USER_INTERFACE_IDIOM() == .pad {
+            captureButton.widthAnchor.constraint(equalTo: view.widthAnchor, multiplier: 0.2).isActive = true
+        } else {
+            captureButton.widthAnchor.constraint(equalTo: view.widthAnchor, multiplier: 0.4).isActive = true
+        }
         captureButton.heightAnchor.constraint(equalTo: buttonStackView.heightAnchor).isActive = true
         captureButton.setTitle("Capture", for: .normal)
         captureButton.addTarget(self, action: #selector(startCapture(sender:)), for: .touchUpInside)
         captureButton.backgroundColor = UIColor.blue
         captureButton.layer.cornerRadius = 20
         
-        testButton.widthAnchor.constraint(equalTo: view.widthAnchor, multiplier: 0.4).isActive = true
-        testButton.heightAnchor.constraint(equalTo: buttonStackView.heightAnchor).isActive = true
-        testButton.setTitle("Test", for: .normal)
-        testButton.addTarget(self, action: #selector(test(sender:)), for: .touchUpInside)
-        testButton.backgroundColor = UIColor.blue
-        testButton.layer.cornerRadius = 20
+//        if UI_USER_INTERFACE_IDIOM() == .pad {
+//            testButton.widthAnchor.constraint(equalTo: view.widthAnchor, multiplier: 0.2).isActive = true
+//        } else {
+//            testButton.widthAnchor.constraint(equalTo: view.widthAnchor, multiplier: 0.4).isActive = true
+//        }
+//        testButton.heightAnchor.constraint(equalTo: buttonStackView.heightAnchor).isActive = true
+//        testButton.setTitle("Test", for: .normal)
+//        testButton.addTarget(self, action: #selector(test(sender:)), for: .touchUpInside)
+//        testButton.backgroundColor = UIColor.blue
+//        testButton.layer.cornerRadius = 20
+        
+        if UI_USER_INTERFACE_IDIOM() == .pad {
+            showPixelsButton.widthAnchor.constraint(equalTo: view.widthAnchor, multiplier: 0.2).isActive = true
+        } else {
+            showPixelsButton.widthAnchor.constraint(equalTo: view.widthAnchor, multiplier: 0.4).isActive = true
+        }
+        showPixelsButton.heightAnchor.constraint(equalTo: buttonStackView.heightAnchor).isActive = true
+        showPixelsButton.setTitle("Show Pixels", for: .normal)
+        showPixelsButton.addTarget(self, action: #selector(test(sender:)), for: .touchUpInside)
+        showPixelsButton.backgroundColor = UIColor.blue
+        showPixelsButton.layer.cornerRadius = 20
         
         numConnectionsLabel.textColor = UIColor.red
         numConnectionsLabel.text = "# Connections: 0"
@@ -191,14 +214,26 @@ class ViewController: UIViewController {
         imageView.leftAnchor.constraint(equalTo: sceneView.leftAnchor).isActive = true
         imageView.rightAnchor.constraint(equalTo: sceneView.rightAnchor).isActive = true
         
-        view.addSubview(clusterView)
-        clusterView.translatesAutoresizingMaskIntoConstraints = false
-        clusterView.topAnchor.constraint(equalTo: sceneView.topAnchor).isActive = true
-        clusterView.bottomAnchor.constraint(equalTo: sceneView.bottomAnchor).isActive = true
-        clusterView.leftAnchor.constraint(equalTo: sceneView.leftAnchor).isActive = true
-        clusterView.rightAnchor.constraint(equalTo: sceneView.rightAnchor).isActive = true
+//        view.addSubview(clusterView)
+//        clusterView.translatesAutoresizingMaskIntoConstraints = false
+//        clusterView.topAnchor.constraint(equalTo: sceneView.topAnchor).isActive = true
+//        clusterView.bottomAnchor.constraint(equalTo: sceneView.bottomAnchor).isActive = true
+//        clusterView.leftAnchor.constraint(equalTo: sceneView.leftAnchor).isActive = true
+//        clusterView.rightAnchor.constraint(equalTo: sceneView.rightAnchor).isActive = true
         
-
+        view.addSubview(clusterView1)
+        clusterView1.translatesAutoresizingMaskIntoConstraints = false
+        clusterView1.topAnchor.constraint(equalTo: sceneView.topAnchor).isActive = true
+        clusterView1.bottomAnchor.constraint(equalTo: sceneView.bottomAnchor).isActive = true
+        clusterView1.leftAnchor.constraint(equalTo: sceneView.leftAnchor).isActive = true
+        clusterView1.rightAnchor.constraint(equalTo: sceneView.rightAnchor).isActive = true
+        
+        view.addSubview(clusterView2)
+        clusterView2.translatesAutoresizingMaskIntoConstraints = false
+        clusterView2.topAnchor.constraint(equalTo: sceneView.topAnchor).isActive = true
+        clusterView2.bottomAnchor.constraint(equalTo: sceneView.bottomAnchor).isActive = true
+        clusterView2.leftAnchor.constraint(equalTo: sceneView.leftAnchor).isActive = true
+        clusterView2.rightAnchor.constraint(equalTo: sceneView.rightAnchor).isActive = true
         
 //        view.addSubview(colorView)
 //        colorView.translatesAutoresizingMaskIntoConstraints = false
@@ -256,6 +291,8 @@ class ViewController: UIViewController {
         
         lightDecoder.delegate = self
       //  lightDecoder.evaluateResults()
+        self.navigationController?.navigationBar.isHidden = true
+        
     }
 
     
@@ -486,6 +523,11 @@ class ViewController: UIViewController {
     
     @objc func settings() {
         navigationController?.pushViewController(settingsViewController, animated: true)
+    }
+    
+    
+    override var prefersStatusBarHidden: Bool {
+        return true
     }
     
 }
@@ -842,14 +884,30 @@ extension ViewController: LightDecoderDelegate {
         imageView.image = resultImage
     }
     
-    func lightDecoder(_: LightDecoder, didUpdateMeanX meanX: Float, meanY: Float, stdDevX: Float, stdDevY: Float) {
-        let radius:CGFloat = CGFloat((stdDevX + stdDevY) / 2.0)
-        let scale = CGFloat(clusterView.frame.size.height / 1920)
+    func lightDecoder(_: LightDecoder, didUpdate codeIndex:Int, meanX: Float, meanY: Float, stdDevX: Float, stdDevY: Float) {
+        let avgStdDev = CGFloat((stdDevX + stdDevY) / 2.0)
+        
+        let scale = CGFloat(clusterView1.frame.size.height / 1920)
         let widthScaled = 1440*scale
-        let xOffset = (widthScaled-clusterView.frame.size.width)/2.0
+        let xOffset = (widthScaled-clusterView1.frame.size.width)/2.0
         let meanXScaled = scale * CGFloat(meanX)
         let meanYScaled = scale * CGFloat(meanY)
-        self.clusterView.update(location: CGPoint(x: CGFloat(meanXScaled-xOffset), y: CGFloat(meanYScaled)), radius: radius)
+        let avgStdDevScaled = avgStdDev * scale
+        let radius:CGFloat = avgStdDevScaled
+        
+        if avgStdDev > 150 {
+            if codeIndex == 1 {
+                self.clusterView1.update(location: CGPoint(x: 0, y: 0), radius: 0)
+            } else if codeIndex == 2 {
+                self.clusterView2.update(location: CGPoint(x: 0, y: 0), radius: 0)
+            }
+        } else {
+            if codeIndex == 1 {
+                self.clusterView1.update(location: CGPoint(x: CGFloat(meanXScaled-xOffset), y: CGFloat(meanYScaled)), radius: radius)
+            } else if codeIndex == 2 {
+                self.clusterView2.update(location: CGPoint(x: CGFloat(meanXScaled-xOffset), y: CGFloat(meanYScaled)), radius: radius)
+            }
+        }
     }
     
     
