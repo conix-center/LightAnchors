@@ -220,7 +220,7 @@ class ViewController: UIViewController {
         
         frameRateLabel.textColor = UIColor.red
         
-
+        motionManager.startDeviceMotionUpdates()
 
     }
 
