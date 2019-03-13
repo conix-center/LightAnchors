@@ -14,6 +14,8 @@ class ClusterView: UIView {
     var location = CGPoint(x: 0, y: 0)
     var radius:CGFloat = 0.0
     
+    var color = UIColor.white
+    
     convenience init() {
         self.init(frame: CGRect(x: 0, y: 0, width: 0, height: 0))
     }
@@ -41,7 +43,7 @@ class ClusterView: UIView {
         }
         
         context.setLineWidth(1.0)
-        context.setStrokeColor(UIColor.white.cgColor)
+        context.setStrokeColor(color.cgColor)
         context.addArc(center: CGPoint(x: location.x, y: location.y), radius: radius, startAngle: 0.0, endAngle: CGFloat.pi*2.0, clockwise: true)
         context.strokePath()
         

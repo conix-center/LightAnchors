@@ -37,6 +37,8 @@ class ViewController: UIViewController {
     
     var capture = false
     var blinkTimer: Timer?
+    
+    var showPixels = true
 
     
     let settingsViewController = SettingsViewController()
@@ -200,7 +202,7 @@ class ViewController: UIViewController {
         }
         showPixelsButton.heightAnchor.constraint(equalTo: buttonStackView.heightAnchor).isActive = true
         showPixelsButton.setTitle("Show Pixels", for: .normal)
-        showPixelsButton.addTarget(self, action: #selector(test(sender:)), for: .touchUpInside)
+        showPixelsButton.addTarget(self, action: #selector(showPixelsClicked(sender:)), for: .touchUpInside)
         showPixelsButton.backgroundColor = UIColor.blue
         showPixelsButton.layer.cornerRadius = 20
         
@@ -290,6 +292,11 @@ class ViewController: UIViewController {
      //   imageView.backgroundColor = UIColor(red: 0, green: 0, blue: 0, alpha: 0.8)
         
         lightDecoder.delegate = self
+        
+        updatePixelView()
+        updateShowPixelsButton()
+        
+        
       //  lightDecoder.evaluateResults()
         self.navigationController?.navigationBar.isHidden = true
         
@@ -379,23 +386,39 @@ class ViewController: UIViewController {
             UserDefaults.standard.setValue(captureId, forKey: kCaptureId)
             self.title = String(format: "Test #: %d", captureId)
             
+            clusterView1.update(location: CGPoint(x: 0, y: 0), radius: 0.0)
+            clusterView2.update(location: CGPoint(x: 0, y: 0), radius: 0.0)
+            
             lightDecoder.evaluateResults()
         }
         updateCaptureButton()
     }
 
     
-    @objc func test(sender: UIButton) {
-        var dataValue = 0
-        if UserDefaults.standard.bool(forKey: kGenerateRandomData) {
-            dataValue = Int.random(in: 0..<0x3F)
+//    @objc func test(sender: UIButton) {
+//        var dataValue = 0
+//        if UserDefaults.standard.bool(forKey: kGenerateRandomData) {
+//            dataValue = Int.random(in: 0..<0x3F)
+//        } else {
+//            dataValue = UserDefaults.standard.integer(forKey: kLightData)
+//        }
+//        let dataString = String(format: "0x%x", dataValue)
+//        NSLog("set data to: %@", dataString)
+//        lightDataLabel.text = dataString
+//        lightAnchorManager.startBlinking(with: dataValue)
+//    }
+    
+    
+    @objc func showPixelsClicked(sender: UIButton) {
+        NSLog("showPixelsClicked")
+        if showPixels == false {
+            showPixels = true
         } else {
-            dataValue = UserDefaults.standard.integer(forKey: kLightData)
+            showPixels = false
         }
-        let dataString = String(format: "0x%x", dataValue)
-        NSLog("set data to: %@", dataString)
-        lightDataLabel.text = dataString
-        lightAnchorManager.startBlinking(with: dataValue)
+        
+        updatePixelView()
+        updateShowPixelsButton()
     }
     
     
@@ -513,11 +536,33 @@ class ViewController: UIViewController {
         
     }
     
+    
+    func updatePixelView() {
+        if showPixels == true {
+            imageView.isHidden = false
+            clusterView1.color = UIColor.white
+            clusterView2.color = UIColor.white
+        } else {
+            imageView.isHidden = true
+            clusterView1.color = UIColor.green
+            clusterView2.color = UIColor.red
+        }
+    }
+    
+    
     func updateCaptureButton() {
         if capture == false {
             captureButton.setTitle("Capture", for: .normal)
         } else {
             captureButton.setTitle("Stop", for: .normal)
+        }
+    }
+    
+    func updateShowPixelsButton() {
+        if showPixels == false {
+            showPixelsButton.setTitle("Show Pixels", for: .normal)
+        } else {
+            showPixelsButton.setTitle("Hide Pixels", for: .normal)
         }
     }
     
