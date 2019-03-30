@@ -25,7 +25,7 @@ class ViewController: UIViewController {
     
     var targetPoint3d: SCNVector3?
  //   var lastFrame: ARFrame?
-    var sphereNode = SCNNode()
+ //   var sphereNode = SCNNode()
     
     var planes = [ARPlaneAnchor: Plane]()
     
@@ -43,6 +43,7 @@ class ViewController: UIViewController {
     
     let settingsViewController = SettingsViewController()
     
+    var sphereNode: SCNNode?
     
     /* UI Elements */
     var numConnectionsLabel: UILabel = UILabel()
@@ -78,6 +79,14 @@ class ViewController: UIViewController {
     let clusterView1 = ClusterView()
     let clusterView2 = ClusterView()
     
+    
+    var cameraAngle:Float = 0.0
+    var cameraPosition = SCNVector3(0,0,0)
+    
+    let xLabel = UILabel()
+    let yLabel = UILabel()
+    let zLabel = UILabel()
+    let labelStackView = UIStackView()
     
     init () {
         super.init(nibName: nil, bundle: nil)
@@ -237,6 +246,21 @@ class ViewController: UIViewController {
         clusterView2.leftAnchor.constraint(equalTo: sceneView.leftAnchor).isActive = true
         clusterView2.rightAnchor.constraint(equalTo: sceneView.rightAnchor).isActive = true
         
+        view.addSubview(labelStackView)
+        labelStackView.addArrangedSubview(xLabel)
+        labelStackView.addArrangedSubview(yLabel)
+        labelStackView.addArrangedSubview(zLabel)
+        
+        labelStackView.translatesAutoresizingMaskIntoConstraints = false
+        labelStackView.topAnchor.constraint(equalTo: frameRateLabel.bottomAnchor).isActive = true
+        labelStackView.leftAnchor.constraint(equalTo: view.leftAnchor).isActive = true
+        labelStackView.rightAnchor.constraint(equalTo: view.rightAnchor).isActive = true
+        labelStackView.heightAnchor.constraint(equalToConstant: 60).isActive = true
+        
+        labelStackView.alignment = .fill
+        labelStackView.axis = .vertical
+        labelStackView.distribution = .fillEqually
+        
 //        view.addSubview(colorView)
 //        colorView.translatesAutoresizingMaskIntoConstraints = false
 //        colorView.widthAnchor.constraint(equalTo: view.widthAnchor, multiplier: 0.25).isActive = true
@@ -266,13 +290,13 @@ class ViewController: UIViewController {
         }
         
         configuration.planeDetection = .horizontal//[.horizontal, .vertical]
-        configuration.worldAlignment = /*.gravity*/.gravityAndHeading//based on compass
-      //  sceneView.debugOptions = [.showWorldOrigin, .showFeaturePoints/*.showWireframe*/]
+        configuration.worldAlignment = .gravity/*.gravityAndHeading*///based on compass
+        sceneView.debugOptions = [.showWorldOrigin/*, .showFeaturePoints*//*.showWireframe*/]
         // Run the view's session
         sceneView.session.run(configuration)
         
-        let sphere = createSphere(at: SCNVector3(x: 0, y: 0, z: 1), color: UIColor.yellow)
-        scene.rootNode.addChildNode(sphere)
+     //   let sphere = createSphere(at: SCNVector3(x: 0, y: 0, z: 1), color: UIColor.yellow)
+     //   scene.rootNode.addChildNode(sphere)
         
         trackingStateLabel.textColor = UIColor.red
         
@@ -296,6 +320,9 @@ class ViewController: UIViewController {
         updatePixelView()
         updateShowPixelsButton()
         
+        xLabel.textColor = UIColor.red
+        yLabel.textColor = UIColor.red
+        zLabel.textColor = UIColor.red
         
       //  lightDecoder.evaluateResults()
         self.navigationController?.navigationBar.isHidden = true
@@ -441,9 +468,9 @@ class ViewController: UIViewController {
                 targetPoint3d = SCNVector3(x: x, y: y, z: z)
                 NSLog("targetPoint3d x: \(x), y: \(y), z: \(z)")
                 if let location = targetPoint3d {
-                    sphereNode.removeFromParentNode()
-                    sphereNode = createSphere(at: location, color: UIColor.green)
-                    scene.rootNode.addChildNode(sphereNode)
+            //        sphereNode.removeFromParentNode()
+             //       sphereNode = createSphere(at: location, color: UIColor.green)
+       //             scene.rootNode.addChildNode(sphereNode)
                 }
             }
  //       }
@@ -570,6 +597,16 @@ class ViewController: UIViewController {
         navigationController?.pushViewController(settingsViewController, animated: true)
     }
     
+    let fovDegreesLandscape: Float = 99
+    
+    func angleToLight(using x: Float) -> Float {
+        let width: Float = 1920
+        let height: Float = 1440
+        let fovDegreesPotrait = height/width * fovDegreesLandscape
+        let angle = (x - Float(clusterView1.frame.size.width)/2.0)/Float(clusterView1.frame.size.width) * (fovDegreesPotrait/2.0)
+        return angle
+    }
+    
     
     override var prefersStatusBarHidden: Bool {
         return true
@@ -640,6 +677,17 @@ extension ViewController: ARSessionDelegate {
     func session(_ session: ARSession, didUpdate frame: ARFrame) {
 
         
+        cameraAngle = frame.camera.eulerAngles.y
+        NSLog("camera angle: %f", cameraAngle)
+        let x = frame.camera.transform.columns.3[0]
+        let y = frame.camera.transform.columns.3[1]
+        let z = frame.camera.transform.columns.3[2]
+        cameraPosition = SCNVector3(x, y, z)
+        
+        xLabel.text = String(format: "x: %.3f", x)
+        yLabel.text = String(format: "y: %.3f", y)
+        zLabel.text = String(format: "z: %.3f", z)
+        
         if capture == true {
             let currentTransform = frame.camera.transform
             let x = currentTransform[3][0]
@@ -684,130 +732,7 @@ extension ViewController: ARSessionDelegate {
         frameCount += 1
             
             
-//            CVPixelBufferLockBaseAddress(frame.capturedImage, .readOnly)
-//            let dataSize = CVPixelBufferGetDataSize(frame.capturedImage)
-//            NSLog("dataSize: %d", dataSize)
-//            if let baseAddress = CVPixelBufferGetBaseAddress(frame.capturedImage) {
-//                NSLog("frame.captureImage: \(frame.capturedImage)\n\n")
-//                NSLog("baseAddress: \(baseAddress)")
-//                let bufferData = Data(bytes: baseAddress, count: dataSize)
-//                do {
-//                    try bufferData.write(to: filePath)
-//                } catch {
-//                    NSLog("error writing to file")
-//                }
-//            }
-//            CVPixelBufferUnlockBaseAddress(frame.capturedImage, .readOnly)
-    //    }
-      //  let ciImage = CIImage(cvPixelBuffer: frame.capturedImage)
-      //  NSLog("new frame")
 
-//        lightDecoder.add(coreImage: ciImage)
-//        if let capturedDepthDataBuffer: AVDepthData = frame.capturedDepthData {
-//            
-//        }
-//        
-//        let imageWidth = CVPixelBufferGetWidth(capturedImageBuffer)
-//        let imageHeight = CVPixelBufferGetHeight(capturedImageBuffer)
-//        let bytesPerRow = CVPixelBufferGetBytesPerRow(capturedImageBuffer)
-
-        
-//        let coreImage = CIImage(cvPixelBuffer: capturedImageBuffer)
-//        let context = CIContext(options: nil)
-//        let cgImage = context.createCGImage(ciImage, from: ciImage.extent)
-//        let uiImage = UIImage(cgImage: cgImage!)
-        
-        
-
-        
-        
-  
-
-//            var cgImage: CGImage?
-//            VTCreateCGImageFromCVPixelBuffer(capturedImageBuffer, options: nil, imageOut: &cgImage)
-//            DispatchQueue.global(qos: .background).async {
-//                if let cg = cgImage {
-//                    NSLog("adding image")
-//
-//                    
-//                
-//                    let uiImage = UIImage(cgImage: cg)
-//                //lightDecoder.add(image: uiImage)
-//                    let croppedImage = uiImage.croppedImage(inRect: CGRect(x: uiImage.size.width/3, y: uiImage.size.height/3, width: uiImage.size.width/3, height: uiImage.size.height/3))
-//           
-//                    self.lightDecoder.add(image: croppedImage)
-//                    //uiImage.saveToFile(named: fileName)
-//                    
-//                    //croppedImage.saveToFile(named: fileName)
-//                }
-//            }
-        
-
-        
-        
-        
-        //        let image = UIImage(ciImage: coreImage)
-    
-        
-//        NSLog("imageWidth: \(imageWidth)")
-//        NSLog("imageHeight: \(imageHeight)")
-//        NSLog("bytes per row: \(bytesPerRow)")
-//
-//  //      lastFrame = frame
-//        if let point3d = targetPoint3d {
-//            let point2dV = sceneView.projectPoint(point3d)
-//            //NSLog("x: %f, y: %f, z: %f", point2dV.x, point2dV.y, point2dV.z)
-//            let point2dInView = CGPoint(x: CGFloat(point2dV.x), y: CGFloat(point2dV.y))
-//
-//            var currentDevice: UIDevice = UIDevice.current
-//            var orientation: UIDeviceOrientation = currentDevice.orientation
-//
-//
-//            if let image = cgImage {
-//
-//                let imageWidth = image.width
-//                let imageHeight = image.height
-//
-//                let pointInImage = CGPoint(x: point2dInView.x/sceneView.frame.size.width*CGFloat(imageWidth), y: point2dInView.y/sceneView.frame.size.height*CGFloat(imageHeight))
-//
-//                NSLog("cgImage width: \(image.width)")
-//                NSLog("cgImage height: \(image.height)")
-//
-//
-//
-//                let bytesPerPixel = 4
-//                let bytesPerRow = bytesPerPixel * imageWidth
-//                let bitsPerComponent = 8
-//
-//                let pixelSizeInBytes:Int = 4
-//                let pixels: UnsafeMutablePointer<UInt32> = calloc(imageHeight*imageWidth, pixelSizeInBytes).assumingMemoryBound(to: UInt32.self)
-//               // let pixels = UnsafeMutablePointer<UInt32>.allocate(capacity: height*width)
-//
-//                let colorSpace = CGColorSpaceCreateDeviceRGB()
-//                let context = CGContext(data: pixels, width: imageWidth, height: imageHeight, bitsPerComponent: bitsPerComponent, bytesPerRow: bytesPerRow, space: colorSpace, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)//kCGImageAlphaPremultipliedLast | kCGBitmapByteOrder32Big
-//
-//                context?.draw(image, in: CGRect(x: 0, y: 0, width: imageWidth, height: imageHeight))
-//                var pixel:UInt32 = 0
-//                if orientation == .portrait || orientation == .portraitUpsideDown {
-//                    pixel = pixels[Int(pointInImage.y*CGFloat(imageWidth))+Int(pointInImage.x)]
-//                } else {
-//                    pixel = pixels[Int(pointInImage.x*CGFloat(imageWidth))+Int(pointInImage.y)]
-//                }
-//                let red = (pixel >> 24) & 0xFF
-//                let green = (pixel >> 16) & 0xFF
-//                let blue = (pixel >> 8) & 0xFF
-//                let alpha = pixel & 0xFF
-//
-//                NSLog("red: \(red) green: \(green) blue: \(blue) alpha: \(alpha)")
-//
-//                free(pixels)
-//
-//            }
-//
-//            DispatchQueue.main.async {
-//                self.locationView.move(to: point2dInView)
-//            }
-//        }
     }
     
     
@@ -940,6 +865,8 @@ extension ViewController: LightDecoderDelegate {
         let avgStdDevScaled = avgStdDev * scale
         let radius:CGFloat = avgStdDevScaled
         
+
+        
         if avgStdDev > 150 {
             if codeIndex == 1 {
                 self.clusterView1.update(location: CGPoint(x: 0, y: 0), radius: 0)
@@ -947,6 +874,34 @@ extension ViewController: LightDecoderDelegate {
                 self.clusterView2.update(location: CGPoint(x: 0, y: 0), radius: 0)
             }
         } else {
+            let lightAngle = angleToLight(using: Float(meanXScaled-xOffset))
+            NSLog("meanX: %f", meanXScaled-xOffset)
+            NSLog("angle to light: %f", lightAngle)
+            
+            if sphereNode == nil {
+                let sphere = SCNSphere(radius: 0.02)
+              //  let sphere = SCNText(string: "AB", extrusionDepth: 0.01)
+                let sphereMaterial = SCNMaterial()
+                sphereMaterial.diffuse.contents = UIColor.green.cgColor
+                sphereMaterial.locksAmbientWithDiffuse = true
+                sphere.materials = [sphereMaterial]
+                sphereNode = SCNNode(geometry: sphere)
+                if let node = sphereNode {
+                    sceneView.scene.rootNode.addChildNode(node)
+                }
+            }
+            if let node = sphereNode {
+                NSLog("light angle: %.2f", lightAngle)
+                let angle = cameraAngle - lightAngle / 180 * Float.pi
+                let zDisp = -1*cos(angle)
+                let xDisp = -1*sin(angle)
+                NSLog("zDisp: \(zDisp), xDisp: \(xDisp)")
+                let nodeX = cameraPosition.x + xDisp
+                let nodeZ = cameraPosition.z + zDisp
+                node.position = SCNVector3(nodeX, 0, nodeZ)
+            }
+            
+            
             if codeIndex == 1 {
                 self.clusterView1.update(location: CGPoint(x: CGFloat(meanXScaled-xOffset), y: CGFloat(meanYScaled)), radius: radius)
             } else if codeIndex == 2 {
