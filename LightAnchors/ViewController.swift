@@ -88,6 +88,8 @@ class ViewController: UIViewController {
     let zLabel = UILabel()
     let labelStackView = UIStackView()
     
+    var clusterPointOnScreen: CGPoint?
+    
     init () {
         super.init(nibName: nil, bundle: nil)
         
@@ -289,7 +291,7 @@ class ViewController: UIViewController {
             NSLog("format: \(format)")
         }
         
-        configuration.planeDetection = .horizontal//[.horizontal, .vertical]
+        configuration.planeDetection = [.horizontal, .vertical]
         configuration.worldAlignment = .gravity/*.gravityAndHeading*///based on compass
         sceneView.debugOptions = [.showWorldOrigin/*, .showFeaturePoints*//*.showWireframe*/]
         // Run the view's session
@@ -465,7 +467,8 @@ class ViewController: UIViewController {
                 let x = result.worldTransform.columns.3.x//transform.m41
                 let y = result.worldTransform.columns.3.y//transform.m42
                 let z = result.worldTransform.columns.3.z//transform.m43
-                targetPoint3d = SCNVector3(x: x, y: y, z: z)
+                
+                targetPoint3d =  SCNVector3(x: x, y: y, z: z)
                 NSLog("targetPoint3d x: \(x), y: \(y), z: \(z)")
                 if let location = targetPoint3d {
             //        sphereNode.removeFromParentNode()
@@ -640,7 +643,8 @@ extension ViewController: ARSCNViewDelegate {
     func renderer(_ renderer: SCNSceneRenderer, didAdd node: SCNNode, for anchor: ARAnchor) {
         DispatchQueue.main.async {
             if let planeAnchor = anchor as? ARPlaneAnchor {
-     //           self.addPlane(node: node, anchor: planeAnchor)
+                NSLog("adding plane")
+                self.addPlane(node: node, anchor: planeAnchor)
             }
         }
     }
@@ -675,9 +679,40 @@ extension ViewController: ARSCNViewDelegate {
 
 extension ViewController: ARSessionDelegate {
     func session(_ session: ARSession, didUpdate frame: ARFrame) {
-
+        if let clusterPoint = self.clusterPointOnScreen {
+            //let results = frame.hitTest(clusterPoint, types: [.existingPlaneUsingGeometry, .estimatedVerticalPlane, .estimatedHorizontalPlane])
+            let results = sceneView.hitTest(clusterPoint, types: [/*.existingPlaneUsingGeometry, .existingPlane, .existingPlaneUsingExtent, */.estimatedHorizontalPlane/*, .estimatedVerticalPlane*/])
+            for result in results {
+                if let anchor = result.anchor {
+                    NSLog("transform: \(anchor.transform)")
+                }
+                let x = result.worldTransform.columns.3[0]
+                let y = result.worldTransform.columns.3[1]
+                let z = result.worldTransform.columns.3[2]
+                if sphereNode == nil {
+                    let sphere = SCNSphere(radius: 0.02)
+                  //  let sphere = SCNText(string: "AB", extrusionDepth: 0.01)
+                    let sphereMaterial = SCNMaterial()
+                    sphereMaterial.diffuse.contents = UIColor.green.cgColor
+                    sphereMaterial.locksAmbientWithDiffuse = true
+                    sphere.materials = [sphereMaterial]
+                    sphereNode = SCNNode(geometry: sphere)
+                    if let node = sphereNode {
+                        sceneView.scene.rootNode.addChildNode(node)
+                    }
+                }
+                if let node = sphereNode {
+                    node.position = SCNVector3(x, y, z)
+                
+                }
+                
+            }
+            clusterPointOnScreen = nil
+        }
         
         cameraAngle = frame.camera.eulerAngles.y
+        
+
         NSLog("camera angle: %f", cameraAngle)
         let x = frame.camera.transform.columns.3[0]
         let y = frame.camera.transform.columns.3[1]
@@ -859,11 +894,16 @@ extension ViewController: LightDecoderDelegate {
         
         let scale = CGFloat(clusterView1.frame.size.height / 1920)
         let widthScaled = 1440*scale
+        let heightScaled = 1920*scale
         let xOffset = (widthScaled-clusterView1.frame.size.width)/2.0
+        let yOffset = (heightScaled-clusterView1.frame.size.height)/2
         let meanXScaled = scale * CGFloat(meanX)
         let meanYScaled = scale * CGFloat(meanY)
         let avgStdDevScaled = avgStdDev * scale
         let radius:CGFloat = avgStdDevScaled
+        let meanXScreen = meanXScaled-xOffset
+        let meanYScreen = meanYScaled-yOffset
+        
         
 
         
@@ -874,32 +914,34 @@ extension ViewController: LightDecoderDelegate {
                 self.clusterView2.update(location: CGPoint(x: 0, y: 0), radius: 0)
             }
         } else {
-            let lightAngle = angleToLight(using: Float(meanXScaled-xOffset))
-            NSLog("meanX: %f", meanXScaled-xOffset)
-            NSLog("angle to light: %f", lightAngle)
+//            let lightAngle = angleToLight(using: Float(meanXScreen))
+//            NSLog("meanX: %f", meanXScaled-xOffset)
+//            NSLog("angle to light: %f", lightAngle)
+//
+//            if sphereNode == nil {
+//                let sphere = SCNSphere(radius: 0.02)
+//              //  let sphere = SCNText(string: "AB", extrusionDepth: 0.01)
+//                let sphereMaterial = SCNMaterial()
+//                sphereMaterial.diffuse.contents = UIColor.green.cgColor
+//                sphereMaterial.locksAmbientWithDiffuse = true
+//                sphere.materials = [sphereMaterial]
+//                sphereNode = SCNNode(geometry: sphere)
+//                if let node = sphereNode {
+//                    sceneView.scene.rootNode.addChildNode(node)
+//                }
+//            }
+//            if let node = sphereNode {
+//                NSLog("light angle: %.2f", lightAngle)
+//                let angle = cameraAngle - lightAngle / 180 * Float.pi
+//                let zDisp = -1*cos(angle)
+//                let xDisp = -1*sin(angle)
+//                NSLog("zDisp: \(zDisp), xDisp: \(xDisp)")
+//                let nodeX = cameraPosition.x + xDisp
+//                let nodeZ = cameraPosition.z + zDisp
+//                node.position = SCNVector3(nodeX, 0, nodeZ)
+//            }
             
-            if sphereNode == nil {
-                let sphere = SCNSphere(radius: 0.02)
-              //  let sphere = SCNText(string: "AB", extrusionDepth: 0.01)
-                let sphereMaterial = SCNMaterial()
-                sphereMaterial.diffuse.contents = UIColor.green.cgColor
-                sphereMaterial.locksAmbientWithDiffuse = true
-                sphere.materials = [sphereMaterial]
-                sphereNode = SCNNode(geometry: sphere)
-                if let node = sphereNode {
-                    sceneView.scene.rootNode.addChildNode(node)
-                }
-            }
-            if let node = sphereNode {
-                NSLog("light angle: %.2f", lightAngle)
-                let angle = cameraAngle - lightAngle / 180 * Float.pi
-                let zDisp = -1*cos(angle)
-                let xDisp = -1*sin(angle)
-                NSLog("zDisp: \(zDisp), xDisp: \(xDisp)")
-                let nodeX = cameraPosition.x + xDisp
-                let nodeZ = cameraPosition.z + zDisp
-                node.position = SCNVector3(nodeX, 0, nodeZ)
-            }
+            self.clusterPointOnScreen = CGPoint(x: meanXScreen, y: CGFloat(meanYScaled))
             
             
             if codeIndex == 1 {
