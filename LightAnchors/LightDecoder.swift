@@ -9,6 +9,7 @@
 import UIKit
 import MetalPerformanceShaders
 import MetalKit
+import Accelerate
 
 
 protocol LightDecoderDelegate {
@@ -209,7 +210,7 @@ class LightDecoder: NSObject {
    
     
     func add(imageBytes: UnsafeRawPointer, length: Int) {
-        
+        NSLog("add")
         guard let device = self.device else {
             NSLog("no device")
             return
@@ -413,6 +414,7 @@ class LightDecoder: NSObject {
 
     
     func decode(imageBytes: UnsafeRawPointer, length: Int) {
+ 
         evenFrame = !evenFrame
         
         if decoding > 0 {
@@ -435,7 +437,7 @@ class LightDecoder: NSObject {
         }
         matchPreamble(imageBuffer: imageBuffer)
         let end = Date().timeIntervalSince1970
-     //   NSLog("decode runtime: %f", end-start)
+        print("decode runtime, ", end-start)
         decoding -= 1
 
     }
@@ -892,7 +894,7 @@ class LightDecoder: NSObject {
         computeCommandEncoder.setComputePipelineState(pipelineState)
 
         let threadExecutionWidth = pipelineState.threadExecutionWidth
-  //      NSLog("threadExecutionWidth: %d", threadExecutionWidth)
+ //       NSLog("threadExecutionWidth: %d", threadExecutionWidth)
         let threadsPerGroup = MTLSize(width: threadExecutionWidth, height: 1, depth: 1)
 
         let numThreadGroups = MTLSize(width: /*1*/(length/4/*+threadExecutionWidth*/)/threadExecutionWidth, height: 1, depth: 1)
@@ -906,13 +908,16 @@ class LightDecoder: NSObject {
         frameCountForImageRender += 1
         if frameCountForImageRender == 24 {
             frameCountForImageRender = 0
-            updateResultImage()
+            DispatchQueue.global(qos: .userInitiated).async {
+                self.updateResultImage()
+            }
         }
 
         
     }
     
     
+
     
     
     
@@ -920,7 +925,7 @@ class LightDecoder: NSObject {
     
     func updateResultImage() {
         
-        let length = 1920*1440
+        let bufferLength = 1920*1440
         
         
         guard let matchArrayOdd = matchBufferOdd?.contents().assumingMemoryBound(to: UInt32.self) else {
@@ -933,12 +938,12 @@ class LightDecoder: NSObject {
             return
         }
         
-        DispatchQueue.global(qos: .userInitiated).async {
+   //     DispatchQueue.global(qos: .userInitiated).async {
             
-            let dataImageArray = UnsafeMutablePointer<UInt32>.allocate(capacity: length)
+            let dataImageArray = UnsafeMutablePointer<UInt32>.allocate(capacity: bufferLength)
   //          let dataImageArrayNoSNR = UnsafeMutablePointer<UInt8>.allocate(capacity: length)
             
-            for i in 0..<length {
+            for i in 0..<bufferLength {
                 if matchArrayOdd[i] != 0 || matchArrayEven[i] != 0 {
                     dataImageArray[i] = matchArrayOdd[i] | matchArrayEven[i]
                 }
@@ -946,44 +951,164 @@ class LightDecoder: NSObject {
             
 
             
-            let rotatedImageArray = UnsafeMutablePointer<UInt32>.allocate(capacity: length)
+            let rotatedImageArray = UnsafeMutablePointer<UInt32>.allocate(capacity: bufferLength)
             for row in 0..<1440 {
                 for column in 0..<1920 {
                     rotatedImageArray[column*1440 + (1439-row)] = dataImageArray[row*1920+column]
                 }
             }
+        
+        
+        let dilatedAndErodedMatchBuffer = UnsafeMutablePointer<UInt32>.allocate(capacity: bufferLength)
+        
+        let numberOfCodes = 2
+        for i in stride(from: 0, to: numberOfCodes, by: 1) {
+            let mask: UInt32 = 1 << i
+            let codeNumber = i+1
             
-//            let codeMask = self.findMostCommonCodeMask(in: rotatedImageArray)
-//            if codeMask.nonzeroBitCount == 1 {
-//                let (meanX, meanY, stdDevX, stdDevY) = self.calculateMeanAndStdDev(from: rotatedImageArray, codeMask: codeMask )
-//                NSLog("meanX: \(meanX), meanY: \(meanY) stdDevX: \(stdDevX) stdDevY: \(stdDevY)")
-//                DispatchQueue.main.async {
-//                    self.delegate?.lightDecoder(self, didUpdateMeanX: meanX, meanY: meanY, stdDevX: stdDevX, stdDevY: stdDevY)
-//                }
+            
+            
+            let singleCodeMatchBuffer = UnsafeMutablePointer<UInt8>.allocate(capacity: bufferLength)
+            
+            for pixelIndex in 0..<bufferLength {
+                if rotatedImageArray[pixelIndex] & mask != 0 {
+                    singleCodeMatchBuffer[pixelIndex] = 0xFF//1//0xFF
+                }
+            }
+            
+            let dilatedAndErodedBuffer = dilateAndErode(inputBuffer: singleCodeMatchBuffer, width: 1440, height: 1920)
+            
+ //           let (meanX, meanY, stdDevX, stdDevY) = self.calculateMeanAndStdDev(from: dilatedAndErodedBuffer)
+            
+            for pixelIndex in 0..<bufferLength {
+                if dilatedAndErodedBuffer[pixelIndex] > 0x7F/*!= 0*/ {
+                    dilatedAndErodedMatchBuffer[pixelIndex] |= mask
+                }
+            }
+
+//            DispatchQueue.main.async {
+//                self.delegate?.lightDecoder(self, didUpdate: codeNumber, meanX: meanX, meanY: meanY, stdDevX: stdDevX, stdDevY: stdDevY)
+//
 //            }
             
+            free(singleCodeMatchBuffer)
+            
+        }
+            
 
-                let (meanX1, meanY1, stdDevX1, stdDevY1) = self.calculateMeanAndStdDev(from: rotatedImageArray, codeMask: 1 )
-            let (meanX2, meanY2, stdDevX2, stdDevY2) = self.calculateMeanAndStdDev(from: rotatedImageArray, codeMask: 2 )
-           //     NSLog("meanX: \(meanX), meanY: \(meanY) stdDevX: \(stdDevX) stdDevY: \(stdDevY)")
-                DispatchQueue.main.async {
-                    self.delegate?.lightDecoder(self, didUpdate: 1, meanX: meanX1, meanY: meanY1, stdDevX: stdDevX1, stdDevY: stdDevY1)
-                    self.delegate?.lightDecoder(self, didUpdate: 2, meanX: meanX2, meanY: meanY2, stdDevX: stdDevX2, stdDevY: stdDevY2)
-                }
+
             
             
-            if let image = UIImage.colorImage(buffer: rotatedImageArray, length: length, rowWidth: 1440) {
+            if let image = UIImage.colorImage(buffer: dilatedAndErodedMatchBuffer, length: bufferLength, rowWidth: 1440) {
                 DispatchQueue.main.async {
                     self.delegate?.lightDecoder(self, didUpdateResultImage: image)
                 }
             }
 
+            free(dilatedAndErodedMatchBuffer)
             free(dataImageArray)
       //      free(dataImageArrayNoSNR)
             free(rotatedImageArray)
             
             
+  //      }
+        
+    }
+    
+    
+    
+    
+    func dilateAndErode(inputBuffer: UnsafeMutablePointer<UInt8>, width: UInt, height: UInt)  -> UnsafeMutablePointer<UInt8> {
+        
+        let imagePixelWidth: vImagePixelCount = width
+        let imagePixelHeight: vImagePixelCount = height
+        
+        var imageBuffer = vImage_Buffer(data: inputBuffer, height: imagePixelHeight, width: imagePixelWidth, rowBytes: Int(imagePixelWidth * 1))
+        
+        var dilatedBuffer = vImage_Buffer()
+        let bitsPerPixel:UInt32 = 8
+        vImageBuffer_Init(&dilatedBuffer,
+                          imagePixelHeight,
+                          imagePixelWidth,
+                          bitsPerPixel,
+                          vImage_Flags(kvImageNoFlags))
+        let srcOffsetToRoiX: vImagePixelCount = 0
+        let srcOffsetToRoiY: vImagePixelCount = 0
+        let dilationFlags: vImage_Flags = 0//vImage_Flags(kvImageDoNotTile)
+        
+//        let dilationConvolutionKernel: [UInt8] = [0x00, 0x7F, 0xFF, 0x7F, 0x00,
+//                                                  0x7F, 0xFF, 0xFF, 0xFF, 0x7F,
+//                                                  0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+//                                                  0x7F, 0xFF, 0xFF, 0xFF, 0x7F,
+//                                                  0x00, 0x7F, 0xFF, 0x7F, 0x00]
+        let dilationConvolutionKernel: [UInt8] = [0x00, 0x1, 0x2, 0x1, 0x00,
+                                                  0x1, 0x2, 0x2, 0x2, 0x1,
+                                                  0x2, 0x2, 0x2, 0x2, 0x2,
+                                                  0x1, 0x2, 0x2, 0x2, 0x1,
+                                                  0x00, 0x1, 0x2, 0x1, 0x00]
+//        let dilationConvolutionKernel: [UInt8] = [0, 0, 1, 1, 1, 1, 1, 0, 0,
+//                                                  0, 1, 1, 1, 1, 1, 1, 1, 0,
+//                                                  1, 1, 1, 1, 1, 1, 1, 1, 1,
+//                                                  1, 1, 1, 1, 1, 1, 1, 1, 1,
+//                                                  1, 1, 1, 1, 1, 1, 1, 1, 1,
+//                                                  1, 1, 1, 1, 1, 1, 1, 1, 1,
+//                                                  1, 1, 1, 1, 1, 1, 1, 1, 1,
+//                                                  0, 1, 1, 1, 1, 1, 1, 1, 0,
+//                                                  0, 0, 1, 1, 1, 1, 1, 0, 0]
+//        let dilationConvolutionKernel: [UInt8] = [1]
+        let dilationConvolutionKernelPtr = UnsafePointer(dilationConvolutionKernel)
+        let dilationConvolutionKernelHeight: vImagePixelCount = 5
+        let dilationConvolutionKernelWidth: vImagePixelCount = 5
+        var err = 0
+        err = vImageDilate_Planar8(&imageBuffer, &dilatedBuffer, srcOffsetToRoiX, srcOffsetToRoiY, dilationConvolutionKernelPtr, dilationConvolutionKernelHeight, dilationConvolutionKernelWidth, dilationFlags)
+        
+        if err != 0 {
+            NSLog("error dilating: %d", err)
+            err = 0
         }
+        
+//        let erosionConvolutionKernel: [UInt8] = [0x00, 0x7F, 0xFF, 0x7F, 0x00,
+//                                                 0x7F, 0xFF, 0xFF, 0xFF, 0x7F,
+//                                                 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+//                                                 0x7F, 0xFF, 0xFF, 0xFF, 0x7F,
+//                                                 0x00, 0x7F, 0xFF, 0x7F, 0x00]
+//        let erosionConvolutionKernel: [UInt8] = [0x00, 0x1, 0x2, 0x1, 0x00,
+//                                                 0x1, 0x2, 0x2, 0x2, 0x1,
+//                                                 0x2, 0x2, 0x2, 0x2, 0x2,
+//                                                 0x1, 0x2, 0x2, 0x2, 0x1,
+//                                                 0x00, 0x1, 0x2, 0x1, 0x00]
+        
+        let erosionConvolutionKernel: [UInt8] = [0, 0, 1, 1, 1, 1, 1, 0, 0,
+                                                 0, 1, 1, 1, 1, 1, 1, 1, 0,
+                                                 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                                                 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                                                 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                                                 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                                                 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                                                 0, 1, 1, 1, 1, 1, 1, 1, 0,
+                                                 0, 0, 1, 1, 1, 1, 1, 0, 0]
+ //       let erosionConvolutionKernel: [UInt8] = [1]
+        
+        let erosionConvolutionKernelPtr = UnsafePointer(erosionConvolutionKernel)
+        let erosionConvolutionKernelHeight: vImagePixelCount = 9
+        let erosionConvolutionKernelWidth: vImagePixelCount = 9
+        let erosionFlags: vImage_Flags = 0//vImage_Flags(kvImageDoNotTile)
+        
+//        var erodedBuffer = vImage_Buffer()
+//        vImageBuffer_Init(&erodedBuffer,
+//                          imagePixelHeight,
+//                          imagePixelWidth,
+//                          bitsPerPixel,
+//                          vImage_Flags(kvImageNoFlags))
+        
+        err = vImageErode_Planar8(&dilatedBuffer, &imageBuffer, srcOffsetToRoiX, srcOffsetToRoiY, erosionConvolutionKernelPtr, erosionConvolutionKernelHeight, erosionConvolutionKernelWidth, erosionFlags)
+        
+        if err != 0 {
+            NSLog("error eroding: %d", err)
+        }
+        
+        free(dilatedBuffer.data)
+        return imageBuffer.data.assumingMemoryBound(to: UInt8.self)
         
     }
 
@@ -1129,8 +1254,8 @@ class LightDecoder: NSObject {
         }
         
         for i in 0..<200 {
-            NSLog("data min: %d", dataMinArrayOdd[i])
-            NSLog("data max: %d", dataMaxArrayOdd[i])
+     //       NSLog("data min: %d", dataMinArrayOdd[i])
+     //       NSLog("data max: %d", dataMaxArrayOdd[i])
         }
         
         dataImageOdd = UIImage.image(buffer: dataImageArrayOdd, length: length, rowWidth: 1920)
@@ -1181,12 +1306,12 @@ class LightDecoder: NSObject {
         }
         dataImageEven = UIImage.image(buffer: dataImageArrayEven, length: length, rowWidth: 1920)
      
-        NSLog("number of preamble matches odd: %d", numberOfPreambleMatchesOdd)
-        NSLog("num odd matching data: %d", numOddMatchingData)
-        NSLog("num odd matching data and snr: %d", numOddMatchingDataAndSnr)
-        NSLog("number of preamble matches even: %d", numberOfPreambleMatchesEven)
-        NSLog("num even matching data: %d", numEvenMatchingData)
-        NSLog("num even matching data and snr: %d", numEvenMatchingDataAndSnr)
+//        NSLog("number of preamble matches odd: %d", numberOfPreambleMatchesOdd)
+//        NSLog("num odd matching data: %d", numOddMatchingData)
+//        NSLog("num odd matching data and snr: %d", numOddMatchingDataAndSnr)
+//        NSLog("number of preamble matches even: %d", numberOfPreambleMatchesEven)
+//        NSLog("num even matching data: %d", numEvenMatchingData)
+//        NSLog("num even matching data and snr: %d", numEvenMatchingDataAndSnr)
         
         
         let dataImageArray = UnsafeMutablePointer<UInt8>.allocate(capacity: length)
@@ -1241,13 +1366,13 @@ class LightDecoder: NSObject {
     }
     
     
-    func calculateMeanAndStdDev(from buffer: UnsafeMutablePointer<UInt32>, codeMask: UInt32) -> (meanX: Float, meanY: Float, stdDevX: Float, stdDevY: Float) {
+    func calculateMeanAndStdDev(from buffer: UnsafeMutablePointer<UInt8>) -> (meanX: Float, meanY: Float, stdDevX: Float, stdDevY: Float) {
         var sumX = 0
         var sumY = 0
         var count = 0
         for y in 0..<1920 {
             for x in 0..<1440 {
-                if buffer[y*1440+x] == codeMask {
+                if buffer[y*1440+x] != 0 {
                     count += 1
                     sumX += x
                     sumY += y
@@ -1261,10 +1386,10 @@ class LightDecoder: NSObject {
         var sumSquaredY: Float = 0
         for y in 0..<1920 {
             for x in 0..<1440 {
-                if buffer[y*1440+x] == codeMask {
+                if buffer[y*1440+x] != 0 {
                     sumSquaredX += pow(Float(x)-meanX, 2)
                     sumSquaredY += pow(Float(y)-meanY, 2)
-
+                    
                 }
             }
         }
@@ -1273,6 +1398,39 @@ class LightDecoder: NSObject {
         
         return (meanX, meanY, stdDevX, stdDevY)
     }
+    
+//    func calculateMeanAndStdDev(from buffer: UnsafeMutablePointer<UInt32>, codeMask: UInt32) -> (meanX: Float, meanY: Float, stdDevX: Float, stdDevY: Float) {
+//        var sumX = 0
+//        var sumY = 0
+//        var count = 0
+//        for y in 0..<1920 {
+//            for x in 0..<1440 {
+//                if buffer[y*1440+x] == codeMask {
+//                    count += 1
+//                    sumX += x
+//                    sumY += y
+//                }
+//            }
+//        }
+//        let meanX = Float(sumX) / Float(count)
+//        let meanY = Float(sumY) / Float(count)
+//
+//        var sumSquaredX: Float = 0
+//        var sumSquaredY: Float = 0
+//        for y in 0..<1920 {
+//            for x in 0..<1440 {
+//                if buffer[y*1440+x] == codeMask {
+//                    sumSquaredX += pow(Float(x)-meanX, 2)
+//                    sumSquaredY += pow(Float(y)-meanY, 2)
+//
+//                }
+//            }
+//        }
+//        let stdDevX = sqrt(sumSquaredX / Float(count))
+//        let stdDevY = sqrt(sumSquaredY / Float(count))
+//
+//        return (meanX, meanY, stdDevX, stdDevY)
+//    }
     
     
     

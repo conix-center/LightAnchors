@@ -43,7 +43,8 @@ class ViewController: UIViewController {
     
     let settingsViewController = SettingsViewController()
     
-    var sphereNode: SCNNode?
+    var coneNode1: SCNNode?
+    var coneNode2: SCNNode?
     
     /* UI Elements */
     var numConnectionsLabel: UILabel = UILabel()
@@ -74,7 +75,7 @@ class ViewController: UIViewController {
     
     let imageView = UIImageView()
     
-    let imageViewBackgroundColor = UIColor(red: 0, green: 0, blue: 0, alpha: 0.95)
+    let imageViewBackgroundColor = UIColor(red: 0, green: 0, blue: 0, alpha: 0.7)
     
     let clusterView1 = ClusterView()
     let clusterView2 = ClusterView()
@@ -88,7 +89,8 @@ class ViewController: UIViewController {
     let zLabel = UILabel()
     let labelStackView = UIStackView()
     
-    var clusterPointOnScreen: CGPoint?
+    var clusterPointOnScreen1: CGPoint?
+    var clusterPointOnScreen2: CGPoint?
     
     init () {
         super.init(nibName: nil, bundle: nil)
@@ -273,7 +275,7 @@ class ViewController: UIViewController {
         let timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { (timer) in
             //NSLog("number of frames: \(self.frameCount)")
             self.frameRateLabel.text = "\(self.frameCount) fps"
-            NSLog("frame rate %d fps", self.frameCount)
+ //           NSLog("frame rate %d fps", self.frameCount)
             self.frameCount = 0
         }
         
@@ -293,7 +295,7 @@ class ViewController: UIViewController {
         
         configuration.planeDetection = [.horizontal, .vertical]
         configuration.worldAlignment = .gravity/*.gravityAndHeading*///based on compass
-        sceneView.debugOptions = [.showWorldOrigin/*, .showFeaturePoints*//*.showWireframe*/]
+//        sceneView.debugOptions = [.showWorldOrigin/*, .showFeaturePoints*//*.showWireframe*/]
         // Run the view's session
         sceneView.session.run(configuration)
         
@@ -357,7 +359,7 @@ class ViewController: UIViewController {
             imageView.backgroundColor = imageViewBackgroundColor
             
             blinkTimer = Timer.scheduledTimer(withTimeInterval: 1.5, repeats: true) { (timer) in
-                NSLog("Fire!")
+     //           NSLog("Fire!")
                 var dataValue = 0
                 if UserDefaults.standard.bool(forKey: kGenerateRandomData) {
                     dataValue = Int.random(in: 0..<0x3F)
@@ -373,7 +375,7 @@ class ViewController: UIViewController {
                     self.blinkDataArray?.add(dataPointDict)
                 }
                 self.lightDecoder.shouldSave = true
-                NSLog("set data to: %@", dataString)
+      //          NSLog("set data to: %@", dataString)
                 self.lightDataLabel.text = dataString
                 self.lightAnchorManager.startBlinking(with: dataValue)
             }
@@ -383,6 +385,8 @@ class ViewController: UIViewController {
             lightAnchorManager.stopBlinking()
             imageView.image = nil
             imageView.backgroundColor = UIColor.clear
+            clusterView1.update(location: CGPoint(x: 0, y: 0), radius: 0.0)
+            clusterView2.update(location: CGPoint(x: 0, y: 0), radius: 0.0)
             do {
                 let jsonData = try JSONSerialization.data(withJSONObject: logDict, options: .prettyPrinted)
                 let jsonString = String(bytes: jsonData, encoding: .utf8)
@@ -498,7 +502,7 @@ class ViewController: UIViewController {
     func addPlane(node: SCNNode, anchor: ARPlaneAnchor) {
         let plane = Plane(anchor)
         planes[anchor] = plane
-        node.addChildNode(plane)
+ //       node.addChildNode(plane)
     }
     
     func updatePlane(anchor: ARPlaneAnchor) {
@@ -574,8 +578,8 @@ class ViewController: UIViewController {
             clusterView2.color = UIColor.white
         } else {
             imageView.isHidden = true
-            clusterView1.color = UIColor.green
-            clusterView2.color = UIColor.red
+            clusterView1.color = UIColor.blue
+            clusterView2.color = UIColor.purple
         }
     }
     
@@ -643,7 +647,7 @@ extension ViewController: ARSCNViewDelegate {
     func renderer(_ renderer: SCNSceneRenderer, didAdd node: SCNNode, for anchor: ARAnchor) {
         DispatchQueue.main.async {
             if let planeAnchor = anchor as? ARPlaneAnchor {
-                NSLog("adding plane")
+       //         NSLog("adding plane")
                 self.addPlane(node: node, anchor: planeAnchor)
             }
         }
@@ -679,7 +683,7 @@ extension ViewController: ARSCNViewDelegate {
 
 extension ViewController: ARSessionDelegate {
     func session(_ session: ARSession, didUpdate frame: ARFrame) {
-        if let clusterPoint = self.clusterPointOnScreen {
+        if let clusterPoint = self.clusterPointOnScreen1 {
             //let results = frame.hitTest(clusterPoint, types: [.existingPlaneUsingGeometry, .estimatedVerticalPlane, .estimatedHorizontalPlane])
             let results = sceneView.hitTest(clusterPoint, types: [/*.existingPlaneUsingGeometry, .existingPlane, .existingPlaneUsingExtent, */.estimatedHorizontalPlane/*, .estimatedVerticalPlane*/])
             for result in results {
@@ -689,31 +693,62 @@ extension ViewController: ARSessionDelegate {
                 let x = result.worldTransform.columns.3[0]
                 let y = result.worldTransform.columns.3[1]
                 let z = result.worldTransform.columns.3[2]
-                if sphereNode == nil {
-                    let sphere = SCNSphere(radius: 0.02)
+                if coneNode1 == nil {
+                    let sphere = SCNCone(topRadius: 0.05, bottomRadius: 0, height: 0.1)//SCNSphere(radius: 0.02)
                   //  let sphere = SCNText(string: "AB", extrusionDepth: 0.01)
                     let sphereMaterial = SCNMaterial()
-                    sphereMaterial.diffuse.contents = UIColor.green.cgColor
+                    sphereMaterial.diffuse.contents = UIColor(red: 0, green: 0, blue: 1, alpha: 0.8)//UIColor.green.cgColor
                     sphereMaterial.locksAmbientWithDiffuse = true
                     sphere.materials = [sphereMaterial]
-                    sphereNode = SCNNode(geometry: sphere)
-                    if let node = sphereNode {
+                    coneNode1 = SCNNode(geometry: sphere)
+                    if let node = coneNode1 {
                         sceneView.scene.rootNode.addChildNode(node)
                     }
                 }
-                if let node = sphereNode {
-                    node.position = SCNVector3(x, y, z)
+                if let node = coneNode1 {
+                    node.position = SCNVector3(x, y+0.05, z)
                 
                 }
                 
             }
-            clusterPointOnScreen = nil
+            clusterPointOnScreen1 = nil
+        }
+        
+        if let clusterPoint = self.clusterPointOnScreen2 {
+            //let results = frame.hitTest(clusterPoint, types: [.existingPlaneUsingGeometry, .estimatedVerticalPlane, .estimatedHorizontalPlane])
+            let results = sceneView.hitTest(clusterPoint, types: [/*.existingPlaneUsingGeometry, .existingPlane, .existingPlaneUsingExtent, */.estimatedHorizontalPlane/*, .estimatedVerticalPlane*/])
+            for result in results {
+                if let anchor = result.anchor {
+                    NSLog("transform: \(anchor.transform)")
+                }
+                let x = result.worldTransform.columns.3[0]
+                let y = result.worldTransform.columns.3[1]
+                let z = result.worldTransform.columns.3[2]
+                if coneNode2 == nil {
+                    let sphere = SCNCone(topRadius: 0.05, bottomRadius: 0, height: 0.1)//SCNSphere(radius: 0.02)
+                    //  let sphere = SCNText(string: "AB", extrusionDepth: 0.01)
+                    let sphereMaterial = SCNMaterial()
+                    sphereMaterial.diffuse.contents = UIColor(red: 1, green: 0, blue: 1, alpha: 0.8)//UIColor.green.cgColor
+                    sphereMaterial.locksAmbientWithDiffuse = true
+                    sphere.materials = [sphereMaterial]
+                    coneNode2 = SCNNode(geometry: sphere)
+                    if let node = coneNode2 {
+                        sceneView.scene.rootNode.addChildNode(node)
+                    }
+                }
+                if let node = coneNode2 {
+                    node.position = SCNVector3(x, y+0.05, z)
+                    
+                }
+                
+            }
+            clusterPointOnScreen2 = nil
         }
         
         cameraAngle = frame.camera.eulerAngles.y
         
 
-        NSLog("camera angle: %f", cameraAngle)
+ //       NSLog("camera angle: %f", cameraAngle)
         let x = frame.camera.transform.columns.3[0]
         let y = frame.camera.transform.columns.3[1]
         let z = frame.camera.transform.columns.3[2]
@@ -885,7 +920,7 @@ extension UIImage {
 
 extension ViewController: LightDecoderDelegate {
     func lightDecoder(_: LightDecoder, didUpdateResultImage resultImage: UIImage) {
-        NSLog("received result image")
+  //      NSLog("received result image")
         imageView.image = resultImage
     }
     
@@ -941,12 +976,14 @@ extension ViewController: LightDecoderDelegate {
 //                node.position = SCNVector3(nodeX, 0, nodeZ)
 //            }
             
-            self.clusterPointOnScreen = CGPoint(x: meanXScreen, y: CGFloat(meanYScaled))
+          //  self.clusterPointOnScreen = CGPoint(x: meanXScreen, y: CGFloat(meanYScaled))
             
             
             if codeIndex == 1 {
+                self.clusterPointOnScreen1 = CGPoint(x: meanXScreen, y: CGFloat(meanYScaled))
                 self.clusterView1.update(location: CGPoint(x: CGFloat(meanXScaled-xOffset), y: CGFloat(meanYScaled)), radius: radius)
             } else if codeIndex == 2 {
+                self.clusterPointOnScreen2 = CGPoint(x: meanXScreen, y: CGFloat(meanYScaled))
                 self.clusterView2.update(location: CGPoint(x: CGFloat(meanXScaled-xOffset), y: CGFloat(meanYScaled)), radius: radius)
             }
         }
