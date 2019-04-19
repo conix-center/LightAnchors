@@ -74,7 +74,9 @@ class LightDecoder: NSObject {
     func initializeMetal() {
         let documentsPath = NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true)[0]
         NSLog("documents: %@", documentsPath)
-        device = MTLCreateSystemDefaultDevice()
+        if device == nil {
+            device = MTLCreateSystemDefaultDevice()
+        }
         let libraryPath = Bundle.main.path(forResource: "kernels", ofType: "metal")
         NSLog("libraryPath: \(libraryPath)")
         if  let lPath = libraryPath{
@@ -437,7 +439,7 @@ class LightDecoder: NSObject {
         }
         matchPreamble(imageBuffer: imageBuffer)
         let end = Date().timeIntervalSince1970
-        print("decode runtime, ", end-start)
+   //     print("decode runtime, ", end-start)
         decoding -= 1
 
     }
@@ -951,12 +953,12 @@ class LightDecoder: NSObject {
             
 
             
-            let rotatedImageArray = UnsafeMutablePointer<UInt32>.allocate(capacity: bufferLength)
-            for row in 0..<1440 {
-                for column in 0..<1920 {
-                    rotatedImageArray[column*1440 + (1439-row)] = dataImageArray[row*1920+column]
-                }
-            }
+//            let rotatedImageArray = UnsafeMutablePointer<UInt32>.allocate(capacity: bufferLength)
+//            for row in 0..<1440 {
+//                for column in 0..<1920 {
+//                    rotatedImageArray[column*1440 + (1439-row)] = dataImageArray[row*1920+column]
+//                }
+//            }
         
         
         let dilatedAndErodedMatchBuffer = UnsafeMutablePointer<UInt32>.allocate(capacity: bufferLength)
@@ -971,13 +973,14 @@ class LightDecoder: NSObject {
             let singleCodeMatchBuffer = UnsafeMutablePointer<UInt8>.allocate(capacity: bufferLength)
             
             for pixelIndex in 0..<bufferLength {
-                if rotatedImageArray[pixelIndex] & mask != 0 {
+                if dataImageArray[pixelIndex] & mask != 0 {
                     singleCodeMatchBuffer[pixelIndex] = 0xFF//1//0xFF
                 }
             }
             
-            let dilatedAndErodedBuffer = dilateAndErode(inputBuffer: singleCodeMatchBuffer, width: 1440, height: 1920)
-            
+         //   let dilatedAndErodedBuffer = dilateAndErode(inputBuffer: singleCodeMatchBuffer, width: 1440, height: 1920)
+           self.setupDilationAndErosionGPU()
+            let dilatedAndErodedBuffer = dilateAndErodeGPU(inputBuffer: singleCodeMatchBuffer, width: 1920, height: 1440)
  //           let (meanX, meanY, stdDevX, stdDevY) = self.calculateMeanAndStdDev(from: dilatedAndErodedBuffer)
             
             for pixelIndex in 0..<bufferLength {
@@ -995,11 +998,16 @@ class LightDecoder: NSObject {
             
         }
             
-
+        let rotatedDilatedAndErodedBuffer = UnsafeMutablePointer<UInt32>.allocate(capacity: bufferLength)
+        for row in 0..<1440 {
+            for column in 0..<1920 {
+                rotatedDilatedAndErodedBuffer[column*1440 + (1439-row)] = dilatedAndErodedMatchBuffer[row*1920+column]
+            }
+        }
 
             
             
-            if let image = UIImage.colorImage(buffer: dilatedAndErodedMatchBuffer, length: bufferLength, rowWidth: 1440) {
+            if let image = UIImage.colorImage(buffer: rotatedDilatedAndErodedBuffer, length: bufferLength, rowWidth: 1440) {
                 DispatchQueue.main.async {
                     self.delegate?.lightDecoder(self, didUpdateResultImage: image)
                 }
@@ -1008,14 +1016,140 @@ class LightDecoder: NSObject {
             free(dilatedAndErodedMatchBuffer)
             free(dataImageArray)
       //      free(dataImageArrayNoSNR)
-            free(rotatedImageArray)
+     //       free(rotatedImageArray)
+        free(rotatedDilatedAndErodedBuffer)
             
             
   //      }
         
     }
     
+    var dilationFunction: MPSImageDilate?
+    var erosionFunction: MPSImageErode?
+    var dilationAndErosionSetup = false
     
+    func setupDilationAndErosionGPU() {
+        if dilationAndErosionSetup == true {
+            return
+        } else {
+            dilationAndErosionSetup = true
+        }
+        if device == nil {
+            device = MTLCreateSystemDefaultDevice()
+        }
+        guard let device = self.device else {
+            NSLog("no device")
+            return
+        }
+        let dilationKernelWidth = 5
+        let dilationKernelHeight = 5
+        let erosionKernelWidth = 9
+        let erosionKernelHeight = 9
+        let dilationConvolutionKernel: [Float] = [0, 1, 1, 1, 0,
+                                                  1, 1, 1, 1, 1,
+                                                  1, 1, 1, 1, 1,
+                                                  1, 1, 1, 1, 1,
+                                                  0, 1, 1, 1, 0]
+        let dilationConvolutionKernelPtr = UnsafePointer(dilationConvolutionKernel)
+        dilationFunction = MPSImageDilate(device: device, kernelWidth: dilationKernelWidth, kernelHeight: dilationKernelHeight, values: dilationConvolutionKernelPtr)
+        let erosionConvolutionKernel: [Float] = [0, 0, 1, 1, 1, 1, 1, 0, 0,
+                                                 0, 1, 1, 1, 1, 1, 1, 1, 0,
+                                                 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                                                 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                                                 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                                                 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                                                 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                                                 0, 1, 1, 1, 1, 1, 1, 1, 0,
+                                                 0, 0, 1, 1, 1, 1, 1, 0, 0]
+        let erosionConvolutionKernelPtr = UnsafePointer(erosionConvolutionKernel)
+        erosionFunction = MPSImageErode(device: device, kernelWidth: erosionKernelWidth, kernelHeight: erosionKernelHeight, values: erosionConvolutionKernelPtr)
+    }
+    
+    
+    func dilateAndErodeGPU(inputBuffer: UnsafeMutablePointer<UInt8>, width: Int, height: Int)  -> UnsafeMutablePointer<UInt8> {
+        if width % 64 != 0 {
+            NSLog("!!! width must be 64 byte aligned !!!")
+            exit(1)
+            return inputBuffer
+        }
+        
+        let length = width * height
+        
+        guard let device = self.device else {
+            NSLog("no device")
+            exit(1)
+            return inputBuffer
+        }
+        
+        guard let commandQueue = self.commandQueue else {
+            NSLog("No command queue")
+            exit(1)
+            return inputBuffer
+        }
+        
+        guard let commandBuffer = commandQueue.makeCommandBuffer() else {
+            NSLog("Cannot make command buffer")
+            exit(1)
+            return inputBuffer
+        }
+        
+        guard let imageBuffer:MTLBuffer = device.makeBuffer(bytes: inputBuffer, length: length, options: .storageModeShared) else {
+            NSLog("Cannot create image buffer")
+            exit(1)
+            return inputBuffer
+        }
+        
+
+        
+        let descriptor = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .r8Unorm/*.a8Unorm*/, width: width, height: height, mipmapped: false)
+        descriptor.usage = [.shaderRead, .shaderWrite]
+        guard var texture = imageBuffer.makeTexture(descriptor: descriptor, offset: 0, bytesPerRow: width) else {
+            NSLog("no texture")
+            exit(1)
+            return inputBuffer
+        }
+        
+        
+        guard let dilatedBuffer: MTLBuffer = device.makeBuffer(length: length, options: .storageModeShared) else {
+            NSLog("Cannot create dilated buffer")
+            exit(1)
+        }
+        guard let dilatedTexture = dilatedBuffer.makeTexture(descriptor: descriptor, offset: 0, bytesPerRow: width) else {
+            NSLog("cannot create dilated texture")
+            exit(1)
+        }
+        
+        guard let dilatedAndErodedBuffer: MTLBuffer = device.makeBuffer(length: length, options: .storageModeShared) else {
+            NSLog("Cannot create dilated buffer")
+            exit(1)
+        }
+        guard let dilatedAndErodedTexture = dilatedAndErodedBuffer.makeTexture(descriptor: descriptor, offset: 0, bytesPerRow: width) else {
+            NSLog("cannot create dilated texture")
+            exit(1)
+        }
+        
+        
+        guard let dilationFunction = self.dilationFunction else {
+            NSLog("no dilation function")
+            exit(1)
+            return inputBuffer
+        }
+    //    dilationFunction.encode(commandBuffer: commandBuffer, inPlaceTexture: &texture)
+        
+        dilationFunction.encode(commandBuffer: commandBuffer, sourceTexture: texture, destinationTexture: dilatedTexture)
+        guard let erosionFunction = self.erosionFunction else {
+            NSLog("no erosion function")
+            exit(1)
+            return inputBuffer
+        }
+ //       erosionFunction.encode(commandBuffer: commandBuffer, inPlaceTexture: &texture)
+        erosionFunction.encode(commandBuffer: commandBuffer, sourceTexture: dilatedTexture, destinationTexture: dilatedAndErodedTexture)
+        
+        commandBuffer.commit()
+        commandBuffer.waitUntilCompleted()
+        NSLog("succesfully dilated and eroded image")
+        return dilatedAndErodedBuffer.contents().assumingMemoryBound(to: UInt8.self)
+    }
     
     
     func dilateAndErode(inputBuffer: UnsafeMutablePointer<UInt8>, width: UInt, height: UInt)  -> UnsafeMutablePointer<UInt8> {
