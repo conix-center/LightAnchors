@@ -43,11 +43,11 @@ class ViewController: UIViewController {
     
     let settingsViewController = SettingsViewController()
     
-    var coneNode1: SCNNode?
-   var coneNode2: SCNNode?
+//    var coneNode1: SCNNode?
+//    var coneNode2: SCNNode?
     
-//    var textNode1: SCNNode?
-//    var textNode2: SCNNode?
+    var textNode1: SCNNode?
+    var textNode2: SCNNode?
     
     /* UI Elements */
     var numConnectionsLabel: UILabel = UILabel()
@@ -696,43 +696,46 @@ extension ViewController: ARSessionDelegate {
                 let x = result.worldTransform.columns.3[0]
                 let y = result.worldTransform.columns.3[1]
                 let z = result.worldTransform.columns.3[2]
-                if coneNode1 == nil {
-                    let sphere = SCNCone(topRadius: 0.05, bottomRadius: 0, height: 0.1)//SCNSphere(radius: 0.02)
-                  //  let sphere = SCNText(string: "AB", extrusionDepth: 0.01)
-                    let sphereMaterial = SCNMaterial()
-                    sphereMaterial.diffuse.contents = UIColor(red: 0, green: 0, blue: 1, alpha: 0.8)//UIColor.green.cgColor
-                    sphereMaterial.locksAmbientWithDiffuse = true
-                    sphere.materials = [sphereMaterial]
-                    coneNode1 = SCNNode(geometry: sphere)
+                if textNode1 == nil {
+//                    let sphere = SCNCone(topRadius: 0.05, bottomRadius: 0, height: 0.1)//SCNSphere(radius: 0.02)
+//                  //  let sphere = SCNText(string: "AB", extrusionDepth: 0.01)
+//                    let sphereMaterial = SCNMaterial()
+//                    sphereMaterial.diffuse.contents = UIColor(red: 0, green: 0, blue: 1, alpha: 0.8)//UIColor.green.cgColor
+//                    sphereMaterial.locksAmbientWithDiffuse = true
+//                    sphere.materials = [sphereMaterial]
+//                    coneNode1 = SCNNode(geometry: sphere)
                     
-//                    let skScene = SKScene(size: CGSize(width: 200, height: 200))
-//                    skScene.backgroundColor = UIColor.clear
-//                    let rectangle = SKShapeNode(rect: CGRect(x: 0, y: 0, width: 200, height: 200))
-//                    rectangle.fillColor = UIColor.blue
-//                    rectangle.strokeColor = UIColor.cyan
-//                    rectangle.lineWidth = 5.0
-//                    rectangle.alpha = 0.4
-//                    let labelNode = SKLabelNode(text: "Charge: 87%")
-//                    labelNode.fontSize = 20
-//                    labelNode.fontName = "San Francisco"
-//                    labelNode.position = CGPoint(x: 100, y: 100)
-//                    skScene.addChild(rectangle)
-//                    skScene.addChild(labelNode)
-//
-//                    let plane = SCNPlane(width: 20, height: 20)
-//                    let material = SCNMaterial()
-//                    material.isDoubleSided = true
-//                    material.diffuse.contents = skScene
-//                    plane.materials = [material]
-//                    textNode1 = SCNNode(geometry: plane)
-                    if let node = coneNode1 {
+                    let skScene = SKScene(size: CGSize(width: 500, height: 500))
+                 
+                    skScene.backgroundColor = UIColor.clear
+                    let rectangle = SKShapeNode(rect: CGRect(x: 0, y: 0, width: 500, height: 500))
+                    rectangle.fillColor = UIColor.blue
+                    rectangle.strokeColor = UIColor.cyan
+                    rectangle.lineWidth = 5.0
+                    rectangle.alpha = 0.4
+                    let labelNode = SKLabelNode(text: "Charge: 87%")
+                    labelNode.zRotation = CGFloat.pi
+                    labelNode.fontSize = 40
+                    labelNode.fontName = "San Francisco"
+                    labelNode.position = CGPoint(x: 250, y: 250)
+                    labelNode.xScale = labelNode.xScale * -1
+                    skScene.addChild(rectangle)
+                    skScene.addChild(labelNode)
+
+                    let plane = SCNPlane(width: 0.2, height: 0.2)
+                    let material = SCNMaterial()
+                    material.isDoubleSided = true
+                    material.diffuse.contents = skScene
+                    plane.materials = [material]
+                    textNode1 = SCNNode(geometry: plane)
+                    if let node = textNode1 {
                         sceneView.scene.rootNode.addChildNode(node)
                     }
-        
-                    coneNode1?.constraints?.append(SCNBillboardConstraint()/*SCNLookAtConstraint(target: sceneView.scene.)*/)
+           
+                    textNode1?.constraints?.append(SCNBillboardConstraint()/*SCNLookAtConstraint(target: sceneView.scene.)*/)
 
                 }
-                if let node = coneNode1 {
+                if let node = textNode1 {
                     node.position = SCNVector3(x, y+0.05, z)
                 
                 }
@@ -751,22 +754,42 @@ extension ViewController: ARSessionDelegate {
                 let x = result.worldTransform.columns.3[0]
                 let y = result.worldTransform.columns.3[1]
                 let z = result.worldTransform.columns.3[2]
-                if coneNode2 == nil {
-                    let sphere = SCNCone(topRadius: 0.05, bottomRadius: 0, height: 0.1)//SCNSphere(radius: 0.02)
-                    //  let sphere = SCNText(string: "AB", extrusionDepth: 0.01)
-                    let sphereMaterial = SCNMaterial()
-                    sphereMaterial.diffuse.contents = UIColor(red: 1, green: 0, blue: 1, alpha: 0.8)//UIColor.green.cgColor
-                    sphereMaterial.locksAmbientWithDiffuse = true
-                    sphere.materials = [sphereMaterial]
-                    coneNode2 = SCNNode(geometry: sphere)
-                    if let node = coneNode2 {
+                if textNode2 == nil {
+                    
+                    let skScene = SKScene(size: CGSize(width: 500, height: 500))
+                    skScene.backgroundColor = UIColor.clear
+                    let rectangle = SKShapeNode(rect: CGRect(x: 0, y: 0, width: 500, height: 500))
+                    rectangle.fillColor = UIColor.green
+                    rectangle.strokeColor = UIColor.green
+                    rectangle.lineWidth = 5.0
+                    rectangle.alpha = 0.4
+                    let labelNode = SKLabelNode(text: "Charge: 99%")
+                    labelNode.zRotation = CGFloat.pi
+                    labelNode.xScale = labelNode.xScale * -1
+                    labelNode.fontSize = 40
+                    labelNode.fontName = "San Francisco"
+                    labelNode.position = CGPoint(x: 250, y: 250)
+                    skScene.addChild(rectangle)
+                    skScene.addChild(labelNode)
+                    
+                    let plane = SCNPlane(width: 0.2, height: 0.2)
+                    let material = SCNMaterial()
+                    material.isDoubleSided = true
+                    material.diffuse.contents = skScene
+                    plane.materials = [material]
+                    textNode2 = SCNNode(geometry: plane)
+                    if let node = textNode2 {
                         sceneView.scene.rootNode.addChildNode(node)
                     }
+                   textNode2?.constraints?.append(SCNBillboardConstraint()/*SCNLookAtConstraint(target: sceneView.scene.)*/)
+//                    textNode2?.constraints?.append(SCNLookAtConstraint(target: frame.camera))
                 }
-                if let node = coneNode2 {
+                if let node = textNode2 {
                     node.position = SCNVector3(x, y+0.05, z)
-                    
+
                 }
+                
+            
                 
             }
             clusterPointOnScreen2 = nil
