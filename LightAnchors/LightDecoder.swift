@@ -981,7 +981,8 @@ class LightDecoder: NSObject {
          //   let dilatedAndErodedBuffer = dilateAndErode(inputBuffer: singleCodeMatchBuffer, width: 1440, height: 1920)
            self.setupDilationAndErosionGPU()
             let dilatedAndErodedBuffer = dilateAndErodeGPU(inputBuffer: singleCodeMatchBuffer, width: 1920, height: 1440)
- //           let (meanX, meanY, stdDevX, stdDevY) = self.calculateMeanAndStdDev(from: dilatedAndErodedBuffer)
+            var (meanX, meanY, stdDevX, stdDevY) = self.calculateMeanAndStdDev(from: dilatedAndErodedBuffer, width: 1920, height: 1440)
+            (meanX, meanY, stdDevX, stdDevY) = rotate(initialWidth: 1920, initialHeight: 1440, meanX: meanX, meanY: meanY, stdDevX: stdDevX, stdDevY: stdDevY)
             
             for pixelIndex in 0..<bufferLength {
                 if dilatedAndErodedBuffer[pixelIndex] > 0x7F/*!= 0*/ {
@@ -989,10 +990,10 @@ class LightDecoder: NSObject {
                 }
             }
 
-//            DispatchQueue.main.async {
-//                self.delegate?.lightDecoder(self, didUpdate: codeNumber, meanX: meanX, meanY: meanY, stdDevX: stdDevX, stdDevY: stdDevY)
-//
-//            }
+            DispatchQueue.main.async {
+                self.delegate?.lightDecoder(self, didUpdate: codeNumber, meanX: meanX, meanY: meanY, stdDevX: stdDevX, stdDevY: stdDevY)
+
+            }
             
             free(singleCodeMatchBuffer)
             
@@ -1024,8 +1025,8 @@ class LightDecoder: NSObject {
         
     }
     
-    var dilationFunction: MPSImageDilate?
-    var erosionFunction: MPSImageErode?
+    var dilationFunction: MPSUnaryImageKernel?
+    var erosionFunction: MPSUnaryImageKernel?
     var dilationAndErosionSetup = false
     
     func setupDilationAndErosionGPU() {
@@ -1041,17 +1042,17 @@ class LightDecoder: NSObject {
             NSLog("no device")
             return
         }
-        let dilationKernelWidth = 5
-        let dilationKernelHeight = 5
-        let erosionKernelWidth = 9
-        let erosionKernelHeight = 9
+        let dilationKernelWidth = 3
+        let dilationKernelHeight = 3
+        let erosionKernelWidth = 5
+        let erosionKernelHeight = 5
         let dilationConvolutionKernel: [Float] = [0, 1, 1, 1, 0,
                                                   1, 1, 1, 1, 1,
                                                   1, 1, 1, 1, 1,
                                                   1, 1, 1, 1, 1,
                                                   0, 1, 1, 1, 0]
         let dilationConvolutionKernelPtr = UnsafePointer(dilationConvolutionKernel)
-        dilationFunction = MPSImageDilate(device: device, kernelWidth: dilationKernelWidth, kernelHeight: dilationKernelHeight, values: dilationConvolutionKernelPtr)
+        dilationFunction = MPSImageAreaMax(device: device, kernelWidth: dilationKernelWidth, kernelHeight: dilationKernelHeight)//MPSImageDilate(device: device, kernelWidth: dilationKernelWidth, kernelHeight: dilationKernelHeight, values: dilationConvolutionKernelPtr)
         let erosionConvolutionKernel: [Float] = [0, 0, 1, 1, 1, 1, 1, 0, 0,
                                                  0, 1, 1, 1, 1, 1, 1, 1, 0,
                                                  1, 1, 1, 1, 1, 1, 1, 1, 1,
@@ -1062,7 +1063,8 @@ class LightDecoder: NSObject {
                                                  0, 1, 1, 1, 1, 1, 1, 1, 0,
                                                  0, 0, 1, 1, 1, 1, 1, 0, 0]
         let erosionConvolutionKernelPtr = UnsafePointer(erosionConvolutionKernel)
-        erosionFunction = MPSImageErode(device: device, kernelWidth: erosionKernelWidth, kernelHeight: erosionKernelHeight, values: erosionConvolutionKernelPtr)
+        //erosionFunction = MPSImageErode(device: device, kernelWidth: erosionKernelWidth, kernelHeight: erosionKernelHeight, values: erosionConvolutionKernelPtr)
+        erosionFunction = MPSImageAreaMin(device: device, kernelWidth: erosionKernelWidth, kernelHeight: erosionKernelHeight)
     }
     
     
@@ -1500,13 +1502,13 @@ class LightDecoder: NSObject {
     }
     
     
-    func calculateMeanAndStdDev(from buffer: UnsafeMutablePointer<UInt8>) -> (meanX: Float, meanY: Float, stdDevX: Float, stdDevY: Float) {
+    func calculateMeanAndStdDev(from buffer: UnsafeMutablePointer<UInt8>, width: Int, height: Int) -> (meanX: Float, meanY: Float, stdDevX: Float, stdDevY: Float) {
         var sumX = 0
         var sumY = 0
         var count = 0
-        for y in 0..<1920 {
-            for x in 0..<1440 {
-                if buffer[y*1440+x] != 0 {
+        for y in 0..<height {
+            for x in 0..<width {
+                if buffer[y*width+x] != 0 {
                     count += 1
                     sumX += x
                     sumY += y
@@ -1518,9 +1520,9 @@ class LightDecoder: NSObject {
         
         var sumSquaredX: Float = 0
         var sumSquaredY: Float = 0
-        for y in 0..<1920 {
-            for x in 0..<1440 {
-                if buffer[y*1440+x] != 0 {
+        for y in 0..<height {
+            for x in 0..<width {
+                if buffer[y*width+x] != 0 {
                     sumSquaredX += pow(Float(x)-meanX, 2)
                     sumSquaredY += pow(Float(y)-meanY, 2)
                     
@@ -1533,44 +1535,10 @@ class LightDecoder: NSObject {
         return (meanX, meanY, stdDevX, stdDevY)
     }
     
-//    func calculateMeanAndStdDev(from buffer: UnsafeMutablePointer<UInt32>, codeMask: UInt32) -> (meanX: Float, meanY: Float, stdDevX: Float, stdDevY: Float) {
-//        var sumX = 0
-//        var sumY = 0
-//        var count = 0
-//        for y in 0..<1920 {
-//            for x in 0..<1440 {
-//                if buffer[y*1440+x] == codeMask {
-//                    count += 1
-//                    sumX += x
-//                    sumY += y
-//                }
-//            }
-//        }
-//        let meanX = Float(sumX) / Float(count)
-//        let meanY = Float(sumY) / Float(count)
-//
-//        var sumSquaredX: Float = 0
-//        var sumSquaredY: Float = 0
-//        for y in 0..<1920 {
-//            for x in 0..<1440 {
-//                if buffer[y*1440+x] == codeMask {
-//                    sumSquaredX += pow(Float(x)-meanX, 2)
-//                    sumSquaredY += pow(Float(y)-meanY, 2)
-//
-//                }
-//            }
-//        }
-//        let stdDevX = sqrt(sumSquaredX / Float(count))
-//        let stdDevY = sqrt(sumSquaredY / Float(count))
-//
-//        return (meanX, meanY, stdDevX, stdDevY)
-//    }
     
-    
-    
-    
-    
-    
+    func rotate(initialWidth: Float, initialHeight: Float, meanX: Float, meanY: Float, stdDevX: Float, stdDevY: Float) -> (meanX: Float, meanY: Float, stdDevX: Float, stdDevY: Float) {
+        return (initialHeight - meanY, meanX, stdDevY, stdDevX)
+    }
     
 
     
