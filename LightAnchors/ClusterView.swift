@@ -27,8 +27,14 @@ class ClusterView: UIView {
     }
     
     func update(location: CGPoint, radius: CGFloat) {
-        self.location = location
-        self.radius = radius
+        if location.x.isNaN || location.y.isNaN || radius.isNaN {
+            self.location = CGPoint(x: 0, y: 0)
+            self.radius = 0
+        } else {
+            self.location = location
+            self.radius = radius
+        }
+        
         setNeedsDisplay()
     }
     
