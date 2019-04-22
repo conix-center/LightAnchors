@@ -989,9 +989,6 @@ extension ViewController: LightDecoderDelegate {
         let meanXScreen = meanXScaled-xOffset
         let meanYScreen = meanYScaled-yOffset
         
-        
-
-        
         if avgStdDev > 150 {
             if codeIndex == 1 {
                 self.clusterView1.update(location: CGPoint(x: 0, y: 0), radius: 0)
@@ -999,42 +996,16 @@ extension ViewController: LightDecoderDelegate {
                 self.clusterView2.update(location: CGPoint(x: 0, y: 0), radius: 0)
             }
         } else {
-//            let lightAngle = angleToLight(using: Float(meanXScreen))
-//            NSLog("meanX: %f", meanXScaled-xOffset)
-//            NSLog("angle to light: %f", lightAngle)
-//
-//            if sphereNode == nil {
-//                let sphere = SCNSphere(radius: 0.02)
-//              //  let sphere = SCNText(string: "AB", extrusionDepth: 0.01)
-//                let sphereMaterial = SCNMaterial()
-//                sphereMaterial.diffuse.contents = UIColor.green.cgColor
-//                sphereMaterial.locksAmbientWithDiffuse = true
-//                sphere.materials = [sphereMaterial]
-//                sphereNode = SCNNode(geometry: sphere)
-//                if let node = sphereNode {
-//                    sceneView.scene.rootNode.addChildNode(node)
-//                }
-//            }
-//            if let node = sphereNode {
-//                NSLog("light angle: %.2f", lightAngle)
-//                let angle = cameraAngle - lightAngle / 180 * Float.pi
-//                let zDisp = -1*cos(angle)
-//                let xDisp = -1*sin(angle)
-//                NSLog("zDisp: \(zDisp), xDisp: \(xDisp)")
-//                let nodeX = cameraPosition.x + xDisp
-//                let nodeZ = cameraPosition.z + zDisp
-//                node.position = SCNVector3(nodeX, 0, nodeZ)
-//            }
-            
-          //  self.clusterPointOnScreen = CGPoint(x: meanXScreen, y: CGFloat(meanYScaled))
-            
-            
             if codeIndex == 1 {
                 self.clusterPointOnScreen1 = CGPoint(x: meanXScreen, y: CGFloat(meanYScaled))
-                self.clusterView1.update(location: CGPoint(x: CGFloat(meanXScaled-xOffset), y: CGFloat(meanYScaled)), radius: radius)
+                if meanXScaled != CGFloat.nan && meanYScaled != CGFloat.nan {
+                    self.clusterView1.update(location: CGPoint(x: CGFloat(meanXScaled-xOffset), y: CGFloat(meanYScaled)), radius: radius)
+                }
             } else if codeIndex == 2 {
                 self.clusterPointOnScreen2 = CGPoint(x: meanXScreen, y: CGFloat(meanYScaled))
-                self.clusterView2.update(location: CGPoint(x: CGFloat(meanXScaled-xOffset), y: CGFloat(meanYScaled)), radius: radius)
+                if meanXScaled != CGFloat.nan && meanYScaled != CGFloat.nan {
+                    self.clusterView2.update(location: CGPoint(x: CGFloat(meanXScaled-xOffset), y: CGFloat(meanYScaled)), radius: radius)
+                }
             }
         }
     }

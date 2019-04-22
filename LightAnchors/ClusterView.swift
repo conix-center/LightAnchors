@@ -27,8 +27,14 @@ class ClusterView: UIView {
     }
     
     func update(location: CGPoint, radius: CGFloat) {
-        self.location = location
-        self.radius = radius
+        if location.x.isNaN || location.y.isNaN || radius.isNaN {
+            self.location = CGPoint(x: 0, y: 0)
+            self.radius = 0
+        } else {
+            self.location = location
+            self.radius = radius
+        }
+        
         setNeedsDisplay()
     }
     
@@ -42,8 +48,15 @@ class ClusterView: UIView {
             return
         }
         
+        if location.x.isNaN || location.y.isNaN || radius.isNaN {
+            self.location = CGPoint(x: 0, y: 0)
+            self.radius = 0
+        } 
+        
         context.setLineWidth(1.0)
         context.setStrokeColor(color.cgColor)
+        NSLog("clusterview x: \(location.x), y: \(location.y), radius: \(radius)")
+
         context.addArc(center: CGPoint(x: location.x, y: location.y), radius: radius, startAngle: 0.0, endAngle: CGFloat.pi*2.0, clockwise: true)
         context.strokePath()
         
