@@ -908,7 +908,7 @@ class LightDecoder: NSObject {
  
         
         frameCountForImageRender += 1
-        if frameCountForImageRender == 24 {
+        if frameCountForImageRender == 40 /*24*/ {
             frameCountForImageRender = 0
             DispatchQueue.global(qos: .userInitiated).async {
                 self.updateResultImage()

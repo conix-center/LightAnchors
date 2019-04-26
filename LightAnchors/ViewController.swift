@@ -90,6 +90,10 @@ class ViewController: UIViewController {
     let xLabel = UILabel()
     let yLabel = UILabel()
     let zLabel = UILabel()
+    let pX1Label = UILabel()
+    let pY1Label = UILabel()
+    let pX2Label = UILabel()
+    let pY2Label = UILabel()
     let labelStackView = UIStackView()
     
     var clusterPointOnScreen1: CGPoint?
@@ -257,12 +261,16 @@ class ViewController: UIViewController {
         labelStackView.addArrangedSubview(xLabel)
         labelStackView.addArrangedSubview(yLabel)
         labelStackView.addArrangedSubview(zLabel)
+        labelStackView.addArrangedSubview(pX1Label)
+        labelStackView.addArrangedSubview(pY1Label)
+        labelStackView.addArrangedSubview(pX2Label)
+        labelStackView.addArrangedSubview(pY2Label)
         
         labelStackView.translatesAutoresizingMaskIntoConstraints = false
         labelStackView.topAnchor.constraint(equalTo: frameRateLabel.bottomAnchor).isActive = true
         labelStackView.leftAnchor.constraint(equalTo: view.leftAnchor).isActive = true
         labelStackView.rightAnchor.constraint(equalTo: view.rightAnchor).isActive = true
-        labelStackView.heightAnchor.constraint(equalToConstant: 60).isActive = true
+        labelStackView.heightAnchor.constraint(equalToConstant: 140).isActive = true
         
         labelStackView.alignment = .fill
         labelStackView.axis = .vertical
@@ -330,6 +338,11 @@ class ViewController: UIViewController {
         xLabel.textColor = UIColor.red
         yLabel.textColor = UIColor.red
         zLabel.textColor = UIColor.red
+        
+        pX1Label.textColor = UIColor.red
+        pY1Label.textColor = UIColor.red
+        pX2Label.textColor = UIColor.red
+        pY2Label.textColor = UIColor.red
         
       //  lightDecoder.evaluateResults()
         self.navigationController?.navigationBar.isHidden = true
@@ -972,8 +985,12 @@ extension ViewController: LightDecoderDelegate {
         if avgStdDev > 150 {
             if codeIndex == 1 {
                 self.clusterView1.update(location: CGPoint(x: 0, y: 0), radius: 0)
+//                pX1Label.text = String(format: "pX1: %.2f", 0.0)
+//                pY1Label.text = String(format: "pY1: %.2f", 0.0)
             } else if codeIndex == 2 {
                 self.clusterView2.update(location: CGPoint(x: 0, y: 0), radius: 0)
+//                pX2Label.text = String(format: "pX2: %.2f", 0.0)
+//                pY2Label.text = String(format: "pY2: %.2f", 0.0)
             }
         } else {
 //            let lightAngle = angleToLight(using: Float(meanXScreen))
@@ -1009,9 +1026,17 @@ extension ViewController: LightDecoderDelegate {
             if codeIndex == 1 {
                 self.clusterPointOnScreen1 = CGPoint(x: meanXScreen, y: CGFloat(meanYScaled))
                 self.clusterView1.update(location: CGPoint(x: CGFloat(meanXScaled-xOffset), y: CGFloat(meanYScaled)), radius: radius)
+                if !meanX.isNaN && !meanY.isNaN {
+                    pX1Label.text = String(format: "pX1: %.2f", meanX)
+                    pY1Label.text = String(format: "pY1: %.2f", meanY)
+                }
             } else if codeIndex == 2 {
                 self.clusterPointOnScreen2 = CGPoint(x: meanXScreen, y: CGFloat(meanYScaled))
                 self.clusterView2.update(location: CGPoint(x: CGFloat(meanXScaled-xOffset), y: CGFloat(meanYScaled)), radius: radius)
+                if !meanX.isNaN && !meanY.isNaN {
+                    pX2Label.text = String(format: "pX2: %.2f", meanX)
+                    pY2Label.text = String(format: "pY2: %.2f", meanY)
+                }
             }
         }
     }
