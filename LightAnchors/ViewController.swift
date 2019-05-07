@@ -13,6 +13,11 @@ import CoreMotion
 
 let kLightData = "LightData"
 
+struct ImageSize {
+    var width: Int
+    var height: Int
+}
+
 class ViewController: UIViewController {
 
     let sceneView = ARSCNView()
@@ -98,6 +103,8 @@ class ViewController: UIViewController {
     
     var clusterPointOnScreen1: CGPoint?
     var clusterPointOnScreen2: CGPoint?
+    
+    var imageSize = ImageSize(width: 0, height: 0)
     
     init () {
         super.init(nibName: nil, bundle: nil)
@@ -300,6 +307,9 @@ class ViewController: UIViewController {
         
         let configuration = ARWorldTrackingConfiguration()
         configuration.isLightEstimationEnabled = true
+        configuration.videoFormat = ARWorldTrackingConfiguration.supportedVideoFormats.last!
+        imageSize = ImageSize(width: Int(configuration.videoFormat.imageResolution.width), height: Int(configuration.videoFormat.imageResolution.height))
+        NSLog("image size width: \(imageSize.width) height: \(imageSize.height)")
         for format in ARWorldTrackingConfiguration.supportedVideoFormats {
             NSLog("format: \(format)")
         }
@@ -308,6 +318,8 @@ class ViewController: UIViewController {
         configuration.worldAlignment = .gravity/*.gravityAndHeading*///based on compass
 //        sceneView.debugOptions = [.showWorldOrigin/*, .showFeaturePoints*//*.showWireframe*/]
         // Run the view's session
+        
+        lightDecoder.initializeMetal(width: imageSize.width, height: imageSize.height)
         sceneView.session.run(configuration)
         
      //   let sphere = createSphere(at: SCNVector3(x: 0, y: 0, z: 1), color: UIColor.yellow)
@@ -343,6 +355,8 @@ class ViewController: UIViewController {
         pY1Label.textColor = UIColor.red
         pX2Label.textColor = UIColor.red
         pY2Label.textColor = UIColor.red
+        
+
         
       //  lightDecoder.evaluateResults()
         self.navigationController?.navigationBar.isHidden = true
@@ -542,20 +556,21 @@ class ViewController: UIViewController {
             
 //            NSLog("pixelBuffer width: %d, height: %d, format: \(format), bytes per row: \(bytesPerRow) ", width, height)
             
-            let grayPlaneHeight = 1920
-            let grayPlaneWidth = 1440
+//            let grayPlaneHeight = 1920
+//            let grayPlaneWidth = 1440
             var grayPlaneIndex = 0
             let planeCount = CVPixelBufferGetPlaneCount(buffer)
             for planeIndex in 0..<planeCount {
                 let planeHeight = CVPixelBufferGetHeightOfPlane(buffer, planeIndex)
                 let planeWidth = CVPixelBufferGetWidthOfPlane(buffer, planeIndex)
-                if planeWidth == grayPlaneWidth && planeHeight == grayPlaneHeight {
+                if planeWidth == imageSize.width/*grayPlaneWidth*/ && planeHeight == imageSize.height/*grayPlaneHeight*/ {
+                    NSLog("found gray plane")
                     grayPlaneIndex = planeIndex
                 }
             }
     
-            let numGrayBytes = grayPlaneHeight*grayPlaneWidth
-            
+            let numGrayBytes = imageSize.width * imageSize.height//grayPlaneHeight*grayPlaneWidth
+            NSLog("numGrayBytes: \(numGrayBytes)")
             CVPixelBufferLockBaseAddress(buffer, .readOnly)
             //let dataSize = CVPixelBufferGetDataSize(frame.capturedImage)
 //            NSLog("dataSize: %d", numGrayBytes)
@@ -623,8 +638,8 @@ class ViewController: UIViewController {
     let fovDegreesLandscape: Float = 99
     
     func angleToLight(using x: Float) -> Float {
-        let width: Float = 1920
-        let height: Float = 1440
+        let width: Float = Float(imageSize.width)
+        let height: Float = Float(imageSize.height)
         let fovDegreesPotrait = height/width * fovDegreesLandscape
         let angle = (x - Float(clusterView1.frame.size.width)/2.0)/Float(clusterView1.frame.size.width) * (fovDegreesPotrait/2.0)
         return angle
@@ -967,17 +982,17 @@ extension ViewController: LightDecoderDelegate {
     func lightDecoder(_: LightDecoder, didUpdate codeIndex:Int, meanX: Float, meanY: Float, stdDevX: Float, stdDevY: Float) {
         let avgStdDev = CGFloat((stdDevX + stdDevY) / 2.0)
         
-        let scale = CGFloat(clusterView1.frame.size.height / 1920)
-        let widthScaled = 1440*scale
-        let heightScaled = 1920*scale
-        let xOffset = (widthScaled-clusterView1.frame.size.width)/2.0
-        let yOffset = (heightScaled-clusterView1.frame.size.height)/2
+        let scale = CGFloat(clusterView1.frame.size.height / CGFloat(imageSize.width))
+ //       let widthScaled = CGFloat(imageSize.height)*scale
+ //       let heightScaled = CGFloat(imageSize.width)*scale
+        let xOffset = CGFloat(0.0)//(heightScaled-clusterView1.frame.size.width)/2.0
+//        let yOffset = (widthScaled-clusterView1.frame.size.height)/2.0
         let meanXScaled = scale * CGFloat(meanX)
         let meanYScaled = scale * CGFloat(meanY)
         let avgStdDevScaled = avgStdDev * scale
         let radius:CGFloat = avgStdDevScaled
         let meanXScreen = meanXScaled-xOffset
-        let meanYScreen = meanYScaled-yOffset
+ //       let meanYScreen = meanYScaled-yOffset
         
         
 
@@ -993,36 +1008,6 @@ extension ViewController: LightDecoderDelegate {
 //                pY2Label.text = String(format: "pY2: %.2f", 0.0)
             }
         } else {
-//            let lightAngle = angleToLight(using: Float(meanXScreen))
-//            NSLog("meanX: %f", meanXScaled-xOffset)
-//            NSLog("angle to light: %f", lightAngle)
-//
-//            if sphereNode == nil {
-//                let sphere = SCNSphere(radius: 0.02)
-//              //  let sphere = SCNText(string: "AB", extrusionDepth: 0.01)
-//                let sphereMaterial = SCNMaterial()
-//                sphereMaterial.diffuse.contents = UIColor.green.cgColor
-//                sphereMaterial.locksAmbientWithDiffuse = true
-//                sphere.materials = [sphereMaterial]
-//                sphereNode = SCNNode(geometry: sphere)
-//                if let node = sphereNode {
-//                    sceneView.scene.rootNode.addChildNode(node)
-//                }
-//            }
-//            if let node = sphereNode {
-//                NSLog("light angle: %.2f", lightAngle)
-//                let angle = cameraAngle - lightAngle / 180 * Float.pi
-//                let zDisp = -1*cos(angle)
-//                let xDisp = -1*sin(angle)
-//                NSLog("zDisp: \(zDisp), xDisp: \(xDisp)")
-//                let nodeX = cameraPosition.x + xDisp
-//                let nodeZ = cameraPosition.z + zDisp
-//                node.position = SCNVector3(nodeX, 0, nodeZ)
-//            }
-            
-          //  self.clusterPointOnScreen = CGPoint(x: meanXScreen, y: CGFloat(meanYScaled))
-            
-            
             if codeIndex == 1 {
                 self.clusterPointOnScreen1 = CGPoint(x: meanXScreen, y: CGFloat(meanYScaled))
                 self.clusterView1.update(location: CGPoint(x: CGFloat(meanXScaled-xOffset), y: CGFloat(meanYScaled)), radius: radius)

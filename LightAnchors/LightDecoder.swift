@@ -49,7 +49,8 @@ class LightDecoder: NSObject {
     var imageBufferArray = [MTLBuffer]()
     var processingImageBuffers = false
     
-    var width = 1440
+    var width = 0
+    var height = 0
     
     var device:MTLDevice?
     var library:MTLLibrary?
@@ -67,11 +68,13 @@ class LightDecoder: NSObject {
         NSLog("LightDecoder init")
         fileNameDateFormatter.dateFormat = "yyyy-MM-dd-HH-mm-ss-SSS"
         
-        initializeMetal()
+  //      initializeMetal()
     }
     
     
-    func initializeMetal() {
+    func initializeMetal(width: Int, height: Int) {
+        self.width = width
+        self.height = height
         let documentsPath = NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true)[0]
         NSLog("documents: %@", documentsPath)
         if device == nil {
@@ -503,7 +506,7 @@ class LightDecoder: NSObject {
             NSLog("Error creating match preamble function")
         }
         
-        bufferLength = 1920*1440
+        bufferLength = self.width*self.height
 //        let  dataCodesArray: [UInt16] = [0x9556,0x9559,0x955a,0x9565,0x9566,0x9569,0x956a,0x9595,0x9596,0x9599,0x959a,0x95a5,0x95a6,0x95a9,0x95aa,0x9655,0x9656,0x9659,0x965a,0x9665,0x9666,0x9669,0x966a,0x9695,0x9696,0x9699,0x969a,0x96a5,0x96a6,0x96a9,0x96aa,0x9955]
         
         /* 12 bit codes */
@@ -813,9 +816,9 @@ class LightDecoder: NSObject {
             return
         }
 
-        let descriptor = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .r8Unorm/*.a8Unorm*/, width: 1920, height: 1440, mipmapped: false)
+        let descriptor = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .r8Unorm/*.a8Unorm*/, width: self.width, height: self.height, mipmapped: false)
         descriptor.usage = [.shaderRead, .shaderWrite]
-        guard var texture = imageBuffer.makeTexture(descriptor: descriptor, offset: 0, bytesPerRow: 1920) else {
+        guard var texture = imageBuffer.makeTexture(descriptor: descriptor, offset: 0, bytesPerRow: self.width) else {
             NSLog("no texture")
             return
         }
@@ -927,7 +930,7 @@ class LightDecoder: NSObject {
     
     func updateResultImage() {
         
-        let bufferLength = 1920*1440
+        let bufferLength = self.width*self.height
         
         
         guard let matchArrayOdd = matchBufferOdd?.contents().assumingMemoryBound(to: UInt32.self) else {
@@ -979,10 +982,10 @@ class LightDecoder: NSObject {
             }
             
          //   let dilatedAndErodedBuffer = dilateAndErode(inputBuffer: singleCodeMatchBuffer, width: 1440, height: 1920)
-           self.setupDilationAndErosionGPU()
-            let dilatedAndErodedBuffer = dilateAndErodeGPU(inputBuffer: singleCodeMatchBuffer, width: 1920, height: 1440)
-            var (meanX, meanY, stdDevX, stdDevY) = self.calculateMeanAndStdDev(from: dilatedAndErodedBuffer, width: 1920, height: 1440)
-            (meanX, meanY, stdDevX, stdDevY) = rotate(initialWidth: 1920, initialHeight: 1440, meanX: meanX, meanY: meanY, stdDevX: stdDevX, stdDevY: stdDevY)
+            self.setupDilationAndErosionGPU()
+            let dilatedAndErodedBuffer = dilateAndErodeGPU(inputBuffer: singleCodeMatchBuffer, width: self.width, height: self.height)
+            var (meanX, meanY, stdDevX, stdDevY) = self.calculateMeanAndStdDev(from: dilatedAndErodedBuffer, width: self.width, height: self.height)
+            (meanX, meanY, stdDevX, stdDevY) = rotate(initialWidth: Float(self.width), initialHeight: Float(self.height), meanX: meanX, meanY: meanY, stdDevX: stdDevX, stdDevY: stdDevY)
             
             for pixelIndex in 0..<bufferLength {
                 if dilatedAndErodedBuffer[pixelIndex] > 0x7F/*!= 0*/ {
@@ -1000,15 +1003,15 @@ class LightDecoder: NSObject {
         }
             
         let rotatedDilatedAndErodedBuffer = UnsafeMutablePointer<UInt32>.allocate(capacity: bufferLength)
-        for row in 0..<1440 {
-            for column in 0..<1920 {
-                rotatedDilatedAndErodedBuffer[column*1440 + (1439-row)] = dilatedAndErodedMatchBuffer[row*1920+column]
+        for row in 0..<self.height {
+            for column in 0..<self.width {
+                rotatedDilatedAndErodedBuffer[column*self.height + (self.height-1-row)] = dilatedAndErodedMatchBuffer[row*self.width+column]
             }
         }
 
             
             
-            if let image = UIImage.colorImage(buffer: rotatedDilatedAndErodedBuffer, length: bufferLength, rowWidth: 1440) {
+            if let image = UIImage.colorImage(buffer: rotatedDilatedAndErodedBuffer, length: bufferLength, rowWidth: self.height) {
                 DispatchQueue.main.async {
                     self.delegate?.lightDecoder(self, didUpdateResultImage: image)
                 }
@@ -1046,23 +1049,23 @@ class LightDecoder: NSObject {
         let dilationKernelHeight = 3
         let erosionKernelWidth = 5
         let erosionKernelHeight = 5
-        let dilationConvolutionKernel: [Float] = [0, 1, 1, 1, 0,
-                                                  1, 1, 1, 1, 1,
-                                                  1, 1, 1, 1, 1,
-                                                  1, 1, 1, 1, 1,
-                                                  0, 1, 1, 1, 0]
-        let dilationConvolutionKernelPtr = UnsafePointer(dilationConvolutionKernel)
+//        let dilationConvolutionKernel: [Float] = [0, 1, 1, 1, 0,
+//                                                  1, 1, 1, 1, 1,
+//                                                  1, 1, 1, 1, 1,
+//                                                  1, 1, 1, 1, 1,
+//                                                  0, 1, 1, 1, 0]
+        //let dilationConvolutionKernelPtr = UnsafePointer(dilationConvolutionKernel)
         dilationFunction = MPSImageAreaMax(device: device, kernelWidth: dilationKernelWidth, kernelHeight: dilationKernelHeight)//MPSImageDilate(device: device, kernelWidth: dilationKernelWidth, kernelHeight: dilationKernelHeight, values: dilationConvolutionKernelPtr)
-        let erosionConvolutionKernel: [Float] = [0, 0, 1, 1, 1, 1, 1, 0, 0,
-                                                 0, 1, 1, 1, 1, 1, 1, 1, 0,
-                                                 1, 1, 1, 1, 1, 1, 1, 1, 1,
-                                                 1, 1, 1, 1, 1, 1, 1, 1, 1,
-                                                 1, 1, 1, 1, 1, 1, 1, 1, 1,
-                                                 1, 1, 1, 1, 1, 1, 1, 1, 1,
-                                                 1, 1, 1, 1, 1, 1, 1, 1, 1,
-                                                 0, 1, 1, 1, 1, 1, 1, 1, 0,
-                                                 0, 0, 1, 1, 1, 1, 1, 0, 0]
-        let erosionConvolutionKernelPtr = UnsafePointer(erosionConvolutionKernel)
+//        let erosionConvolutionKernel: [Float] = [0, 0, 1, 1, 1, 1, 1, 0, 0,
+//                                                 0, 1, 1, 1, 1, 1, 1, 1, 0,
+//                                                 1, 1, 1, 1, 1, 1, 1, 1, 1,
+//                                                 1, 1, 1, 1, 1, 1, 1, 1, 1,
+//                                                 1, 1, 1, 1, 1, 1, 1, 1, 1,
+//                                                 1, 1, 1, 1, 1, 1, 1, 1, 1,
+//                                                 1, 1, 1, 1, 1, 1, 1, 1, 1,
+//                                                 0, 1, 1, 1, 1, 1, 1, 1, 0,
+//                                                 0, 0, 1, 1, 1, 1, 1, 0, 0]
+        //let erosionConvolutionKernelPtr = UnsafePointer(erosionConvolutionKernel)
         //erosionFunction = MPSImageErode(device: device, kernelWidth: erosionKernelWidth, kernelHeight: erosionKernelHeight, values: erosionConvolutionKernelPtr)
         erosionFunction = MPSImageAreaMin(device: device, kernelWidth: erosionKernelWidth, kernelHeight: erosionKernelHeight)
     }
@@ -1072,7 +1075,7 @@ class LightDecoder: NSObject {
         if width % 64 != 0 {
             NSLog("!!! width must be 64 byte aligned !!!")
             exit(1)
-            return inputBuffer
+//            return inputBuffer
         }
         
         let length = width * height
@@ -1080,25 +1083,25 @@ class LightDecoder: NSObject {
         guard let device = self.device else {
             NSLog("no device")
             exit(1)
-            return inputBuffer
+//            return inputBuffer
         }
         
         guard let commandQueue = self.commandQueue else {
             NSLog("No command queue")
             exit(1)
-            return inputBuffer
+//            return inputBuffer
         }
         
         guard let commandBuffer = commandQueue.makeCommandBuffer() else {
             NSLog("Cannot make command buffer")
             exit(1)
-            return inputBuffer
+//            return inputBuffer
         }
         
         guard let imageBuffer:MTLBuffer = device.makeBuffer(bytes: inputBuffer, length: length, options: .storageModeShared) else {
             NSLog("Cannot create image buffer")
             exit(1)
-            return inputBuffer
+//            return inputBuffer
         }
         
 
@@ -1108,7 +1111,7 @@ class LightDecoder: NSObject {
         guard var texture = imageBuffer.makeTexture(descriptor: descriptor, offset: 0, bytesPerRow: width) else {
             NSLog("no texture")
             exit(1)
-            return inputBuffer
+//            return inputBuffer
         }
         
         
@@ -1261,7 +1264,7 @@ class LightDecoder: NSObject {
             return
         }
         
-        let length = 1920*1440
+        let length = self.width*self.height
         
         let matchArrayOdd = matchBufferOdd.contents().assumingMemoryBound(to: UInt8.self)
         var numberOfPreambleMatchesOdd = 0
@@ -1279,13 +1282,13 @@ class LightDecoder: NSObject {
             NSLog("no minArray")
             return
         }
-        let minImage = UIImage.image(buffer: minArray, length: 1920*1440, rowWidth: 1920)
+        let minImage = UIImage.image(buffer: minArray, length: self.width*self.height, rowWidth: self.width)
         
         guard let maxArray = self.maxBuffer?.contents().assumingMemoryBound(to: UInt8.self) else {
             NSLog("no maxArray")
             return
         }
-        let maxImage = UIImage.image(buffer: maxArray, length: 1920*1440, rowWidth: 1920)
+        let maxImage = UIImage.image(buffer: maxArray, length: self.width*self.height, rowWidth: self.width)
         
         var historyBufferImageOdd: UIImage?
         var historyBufferImageEven: UIImage?
@@ -1327,7 +1330,7 @@ class LightDecoder: NSObject {
                     matchImageArrayOdd[i] = 0xFF
                 }
             }
-            matchImageOdd = UIImage.image(buffer: matchImageArrayOdd, length: length, rowWidth: 1920)
+            matchImageOdd = UIImage.image(buffer: matchImageArrayOdd, length: length, rowWidth: self.width)
         }
         
         if let matchArrayEven = self.matchBufferEven?.contents().assumingMemoryBound(to: UInt8.self) {
@@ -1337,7 +1340,7 @@ class LightDecoder: NSObject {
                     matchImageArrayEven[i] = 0xFF
                 }
             }
-            matchImageEven = UIImage.image(buffer: matchImageArrayEven, length: length, rowWidth: 1920)
+            matchImageEven = UIImage.image(buffer: matchImageArrayEven, length: length, rowWidth: self.width)
         }
         
         var dataImageOdd: UIImage?
@@ -1394,7 +1397,7 @@ class LightDecoder: NSObject {
      //       NSLog("data max: %d", dataMaxArrayOdd[i])
         }
         
-        dataImageOdd = UIImage.image(buffer: dataImageArrayOdd, length: length, rowWidth: 1920)
+        dataImageOdd = UIImage.image(buffer: dataImageArrayOdd, length: length, rowWidth: self.width)
 
         
         
@@ -1440,7 +1443,7 @@ class LightDecoder: NSObject {
                 }
             }
         }
-        dataImageEven = UIImage.image(buffer: dataImageArrayEven, length: length, rowWidth: 1920)
+        dataImageEven = UIImage.image(buffer: dataImageArrayEven, length: length, rowWidth: self.width)
      
 //        NSLog("number of preamble matches odd: %d", numberOfPreambleMatchesOdd)
 //        NSLog("num odd matching data: %d", numOddMatchingData)
@@ -1454,7 +1457,7 @@ class LightDecoder: NSObject {
         for i in 0..<length {
             dataImageArray[i] = dataImageArrayOdd[i] | dataImageArrayEven[i]
         }
-        let dataImage = UIImage.image(buffer: dataImageArray, length: length, rowWidth: 1920)
+        let dataImage = UIImage.image(buffer: dataImageArray, length: length, rowWidth: self.width)
         
         let dataImageArrayNoSNR = UnsafeMutablePointer<UInt8>.allocate(capacity: length)
         for i in 0..<length {
@@ -1475,7 +1478,7 @@ class LightDecoder: NSObject {
     
     func findMostCommonCodeMask(in buffer: UnsafeMutablePointer<UInt32>) -> UInt32 {
         var dict = Dictionary<UInt32, Int>()
-        for i in 0..<1920*1440 {
+        for i in 0..<self.width*self.height {
             let pixel: UInt32 = buffer[i]
             if pixel != 0 {
                 if let count = dict[pixel] {
