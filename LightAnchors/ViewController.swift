@@ -309,7 +309,7 @@ class ViewController: UIViewController {
         
         let configuration = ARWorldTrackingConfiguration()
         configuration.isLightEstimationEnabled = true
- //       configuration.videoFormat = ARWorldTrackingConfiguration.supportedVideoFormats.last!
+        configuration.videoFormat = ARWorldTrackingConfiguration.supportedVideoFormats.last!
         imageSize = ImageSize(width: Int(configuration.videoFormat.imageResolution.width), height: Int(configuration.videoFormat.imageResolution.height))
         resolutionLabel.text = String(format: "w: %d h: %d", imageSize.width, imageSize.height)
         NSLog("image size width: \(imageSize.width) height: \(imageSize.height)")
@@ -986,22 +986,47 @@ extension ViewController: LightDecoderDelegate {
     func lightDecoder(_: LightDecoder, didUpdate codeIndex:Int, meanX: Float, meanY: Float, stdDevX: Float, stdDevY: Float) {
         let avgStdDev = CGFloat((stdDevX + stdDevY) / 2.0)
         
-        let scale = CGFloat(clusterView1.frame.size.height / CGFloat(imageSize.width))
-        let widthScaled = CGFloat(imageSize.height)*scale
- //       let heightScaled = CGFloat(imageSize.width)*scale
-        let xOffset = (widthScaled-clusterView1.frame.size.width)/2.0
-
-        NSLog("sizeI widthScaled: \(widthScaled)")
-        NSLog("sizeI clusterView width: \(clusterView1.frame.size.width)")
-        NSLog("sizeI xOffset: \(xOffset)")
+        let screenWidth = clusterView1.frame.size.width
+        let screenHeight = clusterView1.frame.size.height
         
-//        let yOffset = (widthScaled-clusterView1.frame.size.height)/2.0
+        
+        var scale = CGFloat(1.0)
+        var widthScaled = CGFloat(0)
+        var heightScaled = CGFloat(0)
+        
+        var xOffset = CGFloat(0)
+        var yOffset = CGFloat(0)
+        
+        if screenHeight/screenWidth > CGFloat(imageSize.width)/CGFloat(imageSize.height) {
+            scale = CGFloat(clusterView1.frame.size.height / CGFloat(imageSize.width))
+            widthScaled = CGFloat(imageSize.height)*scale
+     //       let heightScaled = CGFloat(imageSize.width)*scale
+            
+            xOffset = (widthScaled-clusterView1.frame.size.width)/2.0
+
+            NSLog("sizeI widthScaled: \(widthScaled)")
+            NSLog("sizeI clusterView width: \(clusterView1.frame.size.width)")
+            NSLog("sizeI xOffset: \(xOffset)")
+            
+    //        let yOffset = (widthScaled-clusterView1.frame.size.height)/2.0
+
+
+          
+        } else {
+            scale = CGFloat(screenWidth/CGFloat(imageSize.height))
+            heightScaled = CGFloat(imageSize.width)*scale
+            yOffset = (heightScaled-screenHeight)/2.0
+            
+        }
+        
+        
         let meanXScaled = scale * CGFloat(meanX)
         let meanYScaled = scale * CGFloat(meanY)
+        let meanXScreen = meanXScaled-xOffset
+        let meanYScreen = meanYScaled-yOffset
         let avgStdDevScaled = avgStdDev * scale
         let radius:CGFloat = avgStdDevScaled
-        let meanXScreen = meanXScaled-xOffset
- //       let meanYScreen = meanYScaled-yOffset
+
         
         
 
@@ -1018,15 +1043,15 @@ extension ViewController: LightDecoderDelegate {
             }
         } else {
             if codeIndex == 1 {
-                self.clusterPointOnScreen1 = CGPoint(x: meanXScreen, y: CGFloat(meanYScaled))
-                self.clusterView1.update(location: CGPoint(x: CGFloat(meanXScaled-xOffset), y: CGFloat(meanYScaled)), radius: radius)
+                self.clusterPointOnScreen1 = CGPoint(x: meanXScreen, y: CGFloat(meanYScreen))
+                self.clusterView1.update(location: CGPoint(x: CGFloat(meanXScaled-xOffset), y: CGFloat(meanYScaled-yOffset)), radius: radius)
                 if !meanX.isNaN && !meanY.isNaN {
                     pX1Label.text = String(format: "pX1: %.2f", meanX)
                     pY1Label.text = String(format: "pY1: %.2f", meanY)
                 }
             } else if codeIndex == 2 {
-                self.clusterPointOnScreen2 = CGPoint(x: meanXScreen, y: CGFloat(meanYScaled))
-                self.clusterView2.update(location: CGPoint(x: CGFloat(meanXScaled-xOffset), y: CGFloat(meanYScaled)), radius: radius)
+                self.clusterPointOnScreen2 = CGPoint(x: meanXScreen, y: CGFloat(meanYScreen))
+                self.clusterView2.update(location: CGPoint(x: CGFloat(meanXScaled-xOffset), y: CGFloat(meanYScaled-yOffset)), radius: radius)
                 if !meanX.isNaN && !meanY.isNaN {
                     pX2Label.text = String(format: "pX2: %.2f", meanX)
                     pY2Label.text = String(format: "pY2: %.2f", meanY)
