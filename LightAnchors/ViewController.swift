@@ -92,6 +92,7 @@ class ViewController: UIViewController {
     var cameraAngle:Float = 0.0
     var cameraPosition = SCNVector3(0,0,0)
     
+    let resolutionLabel = UILabel()
     let xLabel = UILabel()
     let yLabel = UILabel()
     let zLabel = UILabel()
@@ -265,6 +266,7 @@ class ViewController: UIViewController {
         clusterView2.rightAnchor.constraint(equalTo: sceneView.rightAnchor).isActive = true
         
         view.addSubview(labelStackView)
+        labelStackView.addArrangedSubview(resolutionLabel)
         labelStackView.addArrangedSubview(xLabel)
         labelStackView.addArrangedSubview(yLabel)
         labelStackView.addArrangedSubview(zLabel)
@@ -277,7 +279,7 @@ class ViewController: UIViewController {
         labelStackView.topAnchor.constraint(equalTo: frameRateLabel.bottomAnchor).isActive = true
         labelStackView.leftAnchor.constraint(equalTo: view.leftAnchor).isActive = true
         labelStackView.rightAnchor.constraint(equalTo: view.rightAnchor).isActive = true
-        labelStackView.heightAnchor.constraint(equalToConstant: 140).isActive = true
+        labelStackView.heightAnchor.constraint(equalToConstant: 160).isActive = true
         
         labelStackView.alignment = .fill
         labelStackView.axis = .vertical
@@ -307,8 +309,9 @@ class ViewController: UIViewController {
         
         let configuration = ARWorldTrackingConfiguration()
         configuration.isLightEstimationEnabled = true
-        configuration.videoFormat = ARWorldTrackingConfiguration.supportedVideoFormats.last!
+ //       configuration.videoFormat = ARWorldTrackingConfiguration.supportedVideoFormats.last!
         imageSize = ImageSize(width: Int(configuration.videoFormat.imageResolution.width), height: Int(configuration.videoFormat.imageResolution.height))
+        resolutionLabel.text = String(format: "w: %d h: %d", imageSize.width, imageSize.height)
         NSLog("image size width: \(imageSize.width) height: \(imageSize.height)")
         for format in ARWorldTrackingConfiguration.supportedVideoFormats {
             NSLog("format: \(format)")
@@ -347,6 +350,7 @@ class ViewController: UIViewController {
         updatePixelView()
         updateShowPixelsButton()
         
+        resolutionLabel.textColor = UIColor.red
         xLabel.textColor = UIColor.red
         yLabel.textColor = UIColor.red
         zLabel.textColor = UIColor.red
@@ -983,9 +987,14 @@ extension ViewController: LightDecoderDelegate {
         let avgStdDev = CGFloat((stdDevX + stdDevY) / 2.0)
         
         let scale = CGFloat(clusterView1.frame.size.height / CGFloat(imageSize.width))
- //       let widthScaled = CGFloat(imageSize.height)*scale
+        let widthScaled = CGFloat(imageSize.height)*scale
  //       let heightScaled = CGFloat(imageSize.width)*scale
-        let xOffset = CGFloat(0.0)//(heightScaled-clusterView1.frame.size.width)/2.0
+        let xOffset = (widthScaled-clusterView1.frame.size.width)/2.0
+
+        NSLog("sizeI widthScaled: \(widthScaled)")
+        NSLog("sizeI clusterView width: \(clusterView1.frame.size.width)")
+        NSLog("sizeI xOffset: \(xOffset)")
+        
 //        let yOffset = (widthScaled-clusterView1.frame.size.height)/2.0
         let meanXScaled = scale * CGFloat(meanX)
         let meanYScaled = scale * CGFloat(meanY)
