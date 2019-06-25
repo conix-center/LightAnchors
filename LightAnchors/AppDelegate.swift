@@ -27,6 +27,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         let intrinsics = simd_float3x3(float3(900, 0, 0), float3(0, 900, 0), float3(640, 360, 1))
         let cameraTransform = simd_float4x4(float4(0,0,1,0), float4(0,1,0,0), float4(-1,0,0,0), float4(0,0,1,1))
  
+//        let anchorPoints = [AnchorPoint(location3d: SCNVector3(1,1,-5), location2d: CGPoint(x: 838.3,y: 378.6)),
+//                            AnchorPoint(location3d: SCNVector3(2,1,-5), location2d: CGPoint(x: 986.3, y: 378.8)),
+//                            AnchorPoint(location3d: SCNVector3(3,0,-5), location2d: CGPoint(x: 1198.3, y: 539.4)),
+//                            AnchorPoint(location3d: SCNVector3(2,0,-3), location2d: CGPoint(x: 1252.0,y: 645.7))]
+        
         let anchorPoints = [AnchorPoint(location3d: SCNVector3(1,1,-5), location2d: CGPoint(x: 820,y: 360)),
                             AnchorPoint(location3d: SCNVector3(2,1,-5), location2d: CGPoint(x: 1000, y: 360)),
                             AnchorPoint(location3d: SCNVector3(3,0,-5), location2d: CGPoint(x: 1180, y: 540)),

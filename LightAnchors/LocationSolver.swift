@@ -129,6 +129,15 @@ class LocationSolver: NSObject {
             return (Vector(), false)
         }
         
+        NSLog("alpha")
+        printMatrix(Matrix(alpha))
+        NSLog("gamma")
+        printMatrix(Matrix(gamma))
+        NSLog("matrixU")
+        printMatrix(matrixU)
+        NSLog("matrixV")
+        printMatrix(matrixV)
+        
         let mu = alpha .* alpha ./ (gamma .* gamma)
         let c = (matrixU′ * Matrix(vectorB)).flat
         let e = (matrixV′ * Matrix(vectorD)).flat
