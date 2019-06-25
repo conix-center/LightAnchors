@@ -304,6 +304,8 @@ class ViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         
+        
+        
         let tapGestureRecognizer = UITapGestureRecognizer(target: self, action: #selector(handleTap(gestureRecognizer:)))
         view.addGestureRecognizer(tapGestureRecognizer)
         
@@ -720,6 +722,8 @@ extension ViewController: ARSessionDelegate {
     func session(_ session: ARSession, didUpdate frame: ARFrame) {
         if let clusterPoint = self.clusterPointOnScreen1 {
             //let results = frame.hitTest(clusterPoint, types: [.existingPlaneUsingGeometry, .estimatedVerticalPlane, .estimatedHorizontalPlane])
+            
+                        
             let results = sceneView.hitTest(clusterPoint, types: [/*.existingPlaneUsingGeometry, .existingPlane, .existingPlaneUsingExtent, */.estimatedHorizontalPlane/*, .estimatedVerticalPlane*/])
             for result in results {
                 if let anchor = result.anchor {

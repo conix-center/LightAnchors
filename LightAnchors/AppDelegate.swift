@@ -7,6 +7,7 @@
 //
 
 import UIKit
+import ARKit
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -21,6 +22,37 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         let navController = UINavigationController(rootViewController: viewController)
         window?.rootViewController = navController
         window?.makeKeyAndVisible()
+        
+
+        let intrinsics = simd_float3x3(float3(900, 0, 0), float3(0, 900, 0), float3(640, 360, 1))
+        let cameraTransform = simd_float4x4(float4(0,0,1,0), float4(0,1,0,0), float4(-1,0,0,0), float4(0,0,1,1))
+ 
+        let anchorPoints = [AnchorPoint(location3d: SCNVector3(1,1,-5), location2d: CGPoint(x: 820,y: 360)),
+                            AnchorPoint(location3d: SCNVector3(2,1,-5), location2d: CGPoint(x: 1000, y: 360)),
+                            AnchorPoint(location3d: SCNVector3(3,0,-5), location2d: CGPoint(x: 1180, y: 540)),
+                            AnchorPoint(location3d: SCNVector3(2,0,-3), location2d: CGPoint(x: 1240,y: 660))]
+        
+        NSLog("anchor points")
+        for point in anchorPoints {
+            print(point)
+        }
+        
+        NSLog("intrinsics")
+        for i in 0..<3 {
+            print(String(intrinsics.columns.0[i]) + "\t\t" + String(intrinsics.columns.1[i]) + "\t\t" + String(intrinsics.columns.2[i]))
+        }
+        NSLog("camera transform")
+        for i in 0..<4 {
+            print(String(cameraTransform.columns.0[i]) + "\t\t" + String(cameraTransform.columns.1[i]) + "\t\t" + String(cameraTransform.columns.2[i]) + "\t\t" + String(cameraTransform.columns.3[i]))
+        }
+        
+        let locSolver = LocationSolver()
+        locSolver.solveForLocation(intrinsics: intrinsics, cameraTransform: cameraTransform, anchorPoints: anchorPoints) { (transform, success) in
+            NSLog("transform success: %@", success ? "true" : "false")
+            for i in 0..<4 {
+                print(String(transform.columns.0[i]) + "\t\t" + String(transform.columns.1[i]) + "\t\t" + String(transform.columns.2[i]) + "\t\t" + String(transform.columns.3[i]))
+            }
+        }
         
         return true
     }
