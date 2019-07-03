@@ -22,13 +22,6 @@ class LocationSolver: NSObject {
             
             let correctedIntrinsics = self.convert(matrix: intrinsics)
             let worldTransform = cameraTransform.inverse
-            
-            NSLog("correctedIntrinsics")
-            self.printMatrix(correctedIntrinsics)
-            NSLog("worldTransform")
-            self.printMatrix(worldTransform)
-            
-            
             let numPoints = anchorPoints.count
             
             //var fixedCoords = Array(repeating: Array(repeating: 1, count: anchorPoints.count), count: 4)
@@ -38,8 +31,6 @@ class LocationSolver: NSObject {
                 let spoint = simd_float4(x: point.location3d.x, y: point.location3d.y, z: point.location3d.z, w: 1.0)
                 fixedCoords.append( worldTransform * spoint )
             }
-            NSLog("fixedCoords")
-            self.printMatrix(fixedCoords)
             
             let k11 = correctedIntrinsics[0][0]
             let k12 = correctedIntrinsics[1][0]
@@ -59,15 +50,12 @@ class LocationSolver: NSObject {
                 let x = fixedCoords[i][0]
                 let y = fixedCoords[i][1]
                 let z = fixedCoords[i][2]
-                NSLog("u: \(u) v: \(v) x: \(x) y: \(y) z: \(z)")
                 let first1 = (u*k31-k11)*x
                 let second1 = (u*k33-k13)*z
-                NSLog("first1: \(first1) second1: \(second1)")
              
                 matrixA[i*2,0] = Double(first1+second1)
                 let first2 = (u*k31-k11)*z
                 let second2 = (u*k33-k13)*x
-                NSLog("first2: \(first2) second2: \(second2)")
                 matrixA[i*2,1] = Double(first2-second2)
                 matrixA[i*2,2] = Double(u*k31-k11)
                 matrixA[i*2,3] = Double(u*k32-k12)
@@ -87,18 +75,8 @@ class LocationSolver: NSObject {
                 vectorB[i*2] = Double(k12-u*k32)*Double(y)
                 vectorB[i*2+1] = Double(k22-v*k32)*Double(y)
             }
-
-            NSLog("matrixA")
-            self.printMatrix(matrixA)
-            NSLog("vectorB")
-            self.printMatrix(Matrix(vectorB))
             
-            let matrixC: Matrix = Matrix([[1.0, 0.0, 0.0, 0.0, 0.0],
-                                          [0.0, 1.0, 0.0, 0.0, 0.0]])
-            
-            let vectorD: Vector = [0.0, 0.0]
-            
-            let (xStar, success) = self.solveQP(matrixA: matrixA, vectorB: vectorB, matrixC: matrixC, vectorD: vectorD, a: 1.0)
+            let (xStar, success) = self.solveQP(matrixA: matrixA, vectorB: vectorB)
             var newTransform = simd_float4x4()
             newTransform[0][0] = Float(xStar[0])
             newTransform[2][0] = Float(xStar[1])
@@ -109,11 +87,7 @@ class LocationSolver: NSObject {
             newTransform[2][2] = Float(xStar[0])
             newTransform[3][2] = Float(xStar[4])
             newTransform[3][3] = Float(1)
-            NSLog("newTransform")
-            self.printMatrix(newTransform)
             let rTransform = cameraTransform * newTransform * worldTransform
-            
-            print(xStar)
             
             DispatchQueue.main.async {
                 callback(rTransform, success)
@@ -122,33 +96,23 @@ class LocationSolver: NSObject {
     }
     
     
-    func solveQP(matrixA: Matrix, vectorB: Vector, matrixC: Matrix, vectorD: Vector, a: Double) -> (Vector, Bool) {
+    func solveQP(matrixA: Matrix, vectorB: Vector) -> (Vector, Bool) {
         
-        let (matrixU, matrixV, _, alpha, gamma, success) = gsvd(matrixA, matrixC)
+        let matrixC: Matrix = Matrix([[1.0, 0.0, 0.0, 0.0, 0.0],
+                                      [0.0, 1.0, 0.0, 0.0, 0.0]])
+                
+        let (matrixU, _, _, alpha, gamma, success) = gsvd(matrixA, matrixC)
         if success == false || alpha.count != 2 {
             return (Vector(), false)
         }
         
-        NSLog("alpha")
-        printMatrix(Matrix(alpha))
-        NSLog("gamma")
-        printMatrix(Matrix(gamma))
-        NSLog("matrixU")
-        printMatrix(matrixU)
-        NSLog("matrixV")
-        printMatrix(matrixV)
-        
         let mu = alpha .* alpha ./ (gamma .* gamma)
-        let c = (matrixU′ * Matrix(vectorB)).flat
-        let e = (matrixV′ * Matrix(vectorD)).flat
-        let startOfC = Vector(c[0...1])
-        let startOfE = Vector(e[0...1])
-        let restOfE = Vector(e[2..<e.count])
-
-        let diff = gamma .* startOfC - alpha .* startOfE
-        var f = alpha .* alpha .* diff .* diff
+        let _matrixU2 = Matrix([matrixU[col: 5], matrixU[col: 4]])
+        let matrixU2 = toRows(_matrixU2, .Column)
         
-        f.append(sum(restOfE .* restOfE) - a * a)
+        let c = (matrixU2′ * Matrix(vectorB)).flat
+        var f = alpha .* alpha .* gamma .* gamma .* c .* c
+        f.append(-1)
         
         let gammaZero2 = gamma[0] * gamma[0]
         let gammaZero4 = gammaZero2 * gammaZero2
@@ -172,7 +136,7 @@ class LocationSolver: NSObject {
             return (Vector(), false)
         }
         let invMat = inv((matrixA′ * matrixA) + lambdaStar .* (matrixC′ * matrixC))
-        let rhsMat = (matrixA′ * Matrix(vectorB) + lambdaStar .* matrixC′ * Matrix(vectorD))
+        let rhsMat = (matrixA′ * Matrix(vectorB))
         let xStar = invMat * rhsMat
         
         return (xStar.flat, true)
@@ -206,7 +170,7 @@ class LocationSolver: NSObject {
         
         let lWork = max(max(Int(3*N),Int(M)),Int(P))+Int(N)
         var iWork = [__CLPK_integer](repeating: 0, count: Int(N))
-        var work = Vector(repeating: 0.0, count: Int(lWork))
+        var work = Vector(repeating: 0.0, count: Int(lWork) * 4)
         var error = __CLPK_integer(0)
         
         var k = __CLPK_integer()
@@ -245,11 +209,6 @@ class LocationSolver: NSObject {
             print(String(m.columns.0[i]) + "\t\t" + String(m.columns.1[i]) + "\t\t" + String(m.columns.2[i]) + "\t\t" + String(m.columns.3[i]))
         }
     }
-    
-
-    
-
-    
     
     func printMatrix(_ m: simd_float3x3) {
         for i in 0..<3 {
