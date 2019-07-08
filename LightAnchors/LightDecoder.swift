@@ -12,6 +12,8 @@ import MetalKit
 import Accelerate
 
 
+let  dataCodesArray: [UInt16] = [0xA95,0xB6D,0xD6B,0xC93];
+
 protocol LightDecoderDelegate {
     
     func lightDecoder(_ :LightDecoder, didUpdateResultImage resultImage: UIImage)
@@ -507,12 +509,7 @@ class LightDecoder: NSObject {
         }
         
         bufferLength = self.width*self.height
-//        let  dataCodesArray: [UInt16] = [0x9556,0x9559,0x955a,0x9565,0x9566,0x9569,0x956a,0x9595,0x9596,0x9599,0x959a,0x95a5,0x95a6,0x95a9,0x95aa,0x9655,0x9656,0x9659,0x965a,0x9665,0x9666,0x9669,0x966a,0x9695,0x9696,0x9699,0x969a,0x96a5,0x96a6,0x96a9,0x96aa,0x9955]
-        
-        /* 12 bit codes */
-     //   let  dataCodesArray: [UInt16] = [0x956,0x959,0x95a,0x965,0x966,0x969,0x96a,0x995,0x996,0x999,0x99a,0x9a5,0x9a6,0x9a9,0x9aa,0xa55,0xa56,0xa59,0xa5a,0xa65,0xa66,0xa69,0xa6a,0xa95,0xa96,0xa99,0xa9a,0xaa5,0xaa6,0xaa9,0xaaa,0x955];
-        let  dataCodesArray: [UInt16] = [0xA95,0xB6D];
-//        let  dataCodesArray: [UInt16] = [0x956,0xFFF,0xFFF,0xFFF,0xFFF,0xFFF,0xFFF,0xFFF,0xFFF,0xFFF,0xFFF,0xFFF,0xFFF,0xFFF,0xFFF,0xFFF,0xFFF,0xFFF,0xFFF,0xFFF,0xFFF,0xFFF,0xFFF,0xFFF,0xFFF,0xFFF,0xFFF,0xFFF,0xFFF,0xFFF,0xFFF,0xFFF];
+
         let dataCodesPtr: UnsafeMutablePointer<UInt16> = UnsafeMutablePointer(mutating: dataCodesArray)
         dataCodesBuffer = device.makeBuffer(bytes: dataCodesPtr, length: dataCodesArray.count*2, options: .storageModeShared)
 
@@ -694,102 +691,11 @@ class LightDecoder: NSObject {
             return
         }
         
-        guard let prevImageBuffer1 = prevBuffer1 else {
-            NSLog("no prevBuffer1")
-            return
-        }
-        
-        guard let prevImageBuffer2 = prevBuffer2 else {
-            NSLog("no prevBuffer2")
-            return
-        }
-        
-        guard let prevImageBuffer3 = prevBuffer3 else {
-            NSLog("no prevBuffer3")
-            return
-        }
-        
-        guard let prevImageBuffer4 = prevBuffer4 else {
-            NSLog("no prevBuffer4")
-            return
-        }
-        
-        guard let prevImageBuffer5 = prevBuffer5 else {
-            NSLog("no prevBuffer5")
-            return
-        }
-        
-        guard let prevImageBuffer6 = prevBuffer6 else {
-            NSLog("no prevBuffer1")
-            return
-        }
-        
-        guard let prevImageBuffer7 = prevBuffer7 else {
-            NSLog("no prevBuffer2")
-            return
-        }
-        
-        guard let prevImageBuffer8 = prevBuffer8 else {
-            NSLog("no prevBuffer3")
-            return
-        }
-        
-        guard let prevImageBuffer9 = prevBuffer9 else {
-            NSLog("no prevBuffer4")
-            return
-        }
-        
-        guard let prevImageBuffer10 = prevBuffer10 else {
-            NSLog("no prevBuffer5")
-            return
-        }
-        
-        guard let prevImageBuffer11 = prevBuffer11 else {
-            NSLog("no prevBuffer1")
-            return
-        }
-        
-        guard let prevImageBuffer12 = prevBuffer12 else {
-            NSLog("no prevBuffer2")
-            return
-        }
-        
-        guard let prevImageBuffer13 = prevBuffer13 else {
-            NSLog("no prevBuffer3")
-            return
-        }
-        
-        guard let prevImageBuffer14 = prevBuffer14 else {
-            NSLog("no prevBuffer4")
-            return
-        }
-        
-        guard let prevImageBuffer15 = prevBuffer15 else {
-            NSLog("no prevBuffer5")
-            return
-        }
-        
-        guard let prevImageBuffer16 = prevBuffer16 else {
-            NSLog("no prevBuffer1")
-            return
-        }
-        
-        guard let prevImageBuffer17 = prevBuffer17 else {
-            NSLog("no prevBuffer2")
-            return
-        }
-        
-        guard let prevImageBuffer18 = prevBuffer18 else {
-            NSLog("no prevBuffer3")
-            return
-        }
-        
-        guard let prevImageBuffer19 = prevBuffer19 else {
-            NSLog("no prevBuffer3")
+        guard let prevImageBuffer1 = prevBuffer1, let prevImageBuffer2 = prevBuffer2, let prevImageBuffer3 = prevBuffer3, let prevImageBuffer4 = prevBuffer4, let prevImageBuffer5 = prevBuffer5, let prevImageBuffer6 = prevBuffer6, let prevImageBuffer7 = prevBuffer7, let prevImageBuffer8 = prevBuffer8, let prevImageBuffer9 = prevBuffer9, let prevImageBuffer10 = prevBuffer10, let prevImageBuffer11 = prevBuffer11, let prevImageBuffer12 = prevBuffer12, let prevImageBuffer13 = prevBuffer13, let prevImageBuffer14 = prevBuffer14, let prevImageBuffer15 = prevBuffer15, let prevImageBuffer16 = prevBuffer16, let prevImageBuffer17 = prevBuffer17, let prevImageBuffer18 = prevBuffer18, let prevImageBuffer19 = prevBuffer19 else {
+            NSLog("no prevBuffer")
             return
         }
 
-        
         guard let dataMinBuffer = dataMinBufferOpt else {
             NSLog("no data min buffer")
             return
@@ -966,8 +872,8 @@ class LightDecoder: NSObject {
         
         let dilatedAndErodedMatchBuffer = UnsafeMutablePointer<UInt32>.allocate(capacity: bufferLength)
         
-        let numberOfCodes = 2
-        for i in stride(from: 0, to: numberOfCodes, by: 1) {
+
+        for i in stride(from: 0, to: dataCodesArray.count, by: 1) {
             let mask: UInt32 = 1 << i
             let codeNumber = i+1
             
@@ -1589,17 +1495,23 @@ extension UIImage {
         let colorRowWidthBytes = rowWidth * bytesPerPixel
         
         let colorBuffer = UnsafeMutablePointer<UInt8>.allocate(capacity: colorBufferLength)
-        let targetBit: UInt32 = 1 << 0 /* which code are we looking for */
+  //      let targetBit: UInt32 = 1 << 0 /* which code are we looking for */
         for i in 0..<length {
-            if buffer[i] & targetBit != 0  {
+            if buffer[i] & 0x1/*targetBit*/ != 0  {
                 colorBuffer[i*bytesPerPixel + greenByte] = 0xFF;
                 colorBuffer[i*bytesPerPixel + alphaByte] = 0xFF;
-                if buffer[i] & ~targetBit != 0 {
-                    colorBuffer[i*bytesPerPixel + redByte] = 0xFF;
-                }
-            
-            } else if buffer[i] != 0 {
+//                if buffer[i] & ~targetBit != 0 {
+//                    colorBuffer[i*bytesPerPixel + redByte] = 0xFF;
+//                }
+            } else if buffer[i] & 0x2 != 0 {
                 colorBuffer[i*bytesPerPixel + redByte] = 0xFF;
+                colorBuffer[i*bytesPerPixel + alphaByte] = 0xFF;
+            } else if buffer[i] & 0x4 != 0 {
+                colorBuffer[i*bytesPerPixel + blueByte] = 0xFF;
+                colorBuffer[i*bytesPerPixel + alphaByte] = 0xFF;
+            } else if buffer[i] & 0x8 != 0 {
+                colorBuffer[i*bytesPerPixel + redByte] = 0xFF;
+                colorBuffer[i*bytesPerPixel + greenByte] = 0xFF;
                 colorBuffer[i*bytesPerPixel + alphaByte] = 0xFF;
             }
         }
