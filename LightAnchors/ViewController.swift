@@ -105,7 +105,14 @@ class ViewController: UIViewController {
     var clusterPointOnScreen1: CGPoint?
     var clusterPointOnScreen2: CGPoint?
     
+    let locationSolver = LocationSolver()
+    
     var imageSize = ImageSize(width: 0, height: 0)
+    
+    let anchor1Location = SCNVector3(0,1,0)
+    let anchor2Location = SCNVector3(1,1,0)
+    let anchor3Location = SCNVector3(1,0,0)
+    let anchor4Location = SCNVector3(0,0,0)
     
     init () {
         super.init(nibName: nil, bundle: nil)
@@ -366,7 +373,15 @@ class ViewController: UIViewController {
         
       //  lightDecoder.evaluateResults()
         self.navigationController?.navigationBar.isHidden = true
-        
+        let nodeRadius = Float(0.1)
+        let node1 = createSphere(at: anchor1Location, radius:nodeRadius, color: .green)
+        scene.rootNode.addChildNode(node1)
+        let node2 = createSphere(at: anchor2Location, radius: nodeRadius, color: .red)
+        scene.rootNode.addChildNode(node2)
+        let node3 = createSphere(at: anchor3Location, radius: nodeRadius, color: .blue)
+        scene.rootNode.addChildNode(node3)
+        let node4 = createSphere(at: anchor4Location, radius: nodeRadius, color: .yellow)
+        scene.rootNode.addChildNode(node4)
     }
 
     
@@ -524,8 +539,8 @@ class ViewController: UIViewController {
     
     
     
-    func createSphere(at location: SCNVector3, color: UIColor) -> SCNNode{
-        let sphereGeometry = SCNSphere(radius: 0.03)
+    func createSphere(at location: SCNVector3, radius: Float, color: UIColor) -> SCNNode{
+        let sphereGeometry = SCNSphere(radius: CGFloat(radius))
         let sphereMaterial = SCNMaterial()
         sphereMaterial.diffuse.contents = color.cgColor
         sphereMaterial.locksAmbientWithDiffuse = true
@@ -656,6 +671,9 @@ class ViewController: UIViewController {
         return true
     }
     
+    var cameraIntrinsics = simd_float3x3()
+    var cameraTransform = simd_float4x4()
+    
 }
 
 
@@ -722,6 +740,11 @@ extension ViewController: ARSessionDelegate {
     func session(_ session: ARSession, didUpdate frame: ARFrame) {
         if let clusterPoint = self.clusterPointOnScreen1 {
             //let results = frame.hitTest(clusterPoint, types: [.existingPlaneUsingGeometry, .estimatedVerticalPlane, .estimatedHorizontalPlane])
+            
+            
+
+            cameraIntrinsics = frame.camera.intrinsics
+            cameraTransform = frame.camera.transform
             
                         
             let results = sceneView.hitTest(clusterPoint, types: [/*.existingPlaneUsingGeometry, .existingPlane, .existingPlaneUsingExtent, */.estimatedHorizontalPlane/*, .estimatedVerticalPlane*/])
@@ -987,81 +1010,124 @@ extension ViewController: LightDecoderDelegate {
         imageView.image = resultImage
     }
     
-    func lightDecoder(_: LightDecoder, didUpdate codeIndex:Int, meanX: Float, meanY: Float, stdDevX: Float, stdDevY: Float) {
-        let avgStdDev = CGFloat((stdDevX + stdDevY) / 2.0)
+    func lightDecoder(_: LightDecoder, didUpdate screenPoints: [LightDecoderScreenPoint]) {
         
-        let screenWidth = clusterView1.frame.size.width
-        let screenHeight = clusterView1.frame.size.height
+        var point1: CGPoint?
+        var point2: CGPoint?
+        var point3: CGPoint?
+        var point4: CGPoint?
         
-        
-        var scale = CGFloat(1.0)
-        var widthScaled = CGFloat(0)
-        var heightScaled = CGFloat(0)
-        
-        var xOffset = CGFloat(0)
-        var yOffset = CGFloat(0)
-        
-        if screenHeight/screenWidth > CGFloat(imageSize.width)/CGFloat(imageSize.height) {
-            scale = CGFloat(clusterView1.frame.size.height / CGFloat(imageSize.width))
-            widthScaled = CGFloat(imageSize.height)*scale
-     //       let heightScaled = CGFloat(imageSize.width)*scale
+        for screenPoint in screenPoints {
+            let codeIndex = screenPoint.codeIndex
+            let meanX = screenPoint.meanX
+            let meanY = screenPoint.meanY
+            let stdDevX = screenPoint.stdDevX
+            let stdDevY = screenPoint.stdDevY
             
-            xOffset = (widthScaled-clusterView1.frame.size.width)/2.0
-
-            NSLog("sizeI widthScaled: \(widthScaled)")
-            NSLog("sizeI clusterView width: \(clusterView1.frame.size.width)")
-            NSLog("sizeI xOffset: \(xOffset)")
+            let avgStdDev = CGFloat((stdDevX + stdDevY) / 2.0)
             
-    //        let yOffset = (widthScaled-clusterView1.frame.size.height)/2.0
-
-
-          
-        } else {
-            scale = CGFloat(screenWidth/CGFloat(imageSize.height))
-            heightScaled = CGFloat(imageSize.width)*scale
-            yOffset = (heightScaled-screenHeight)/2.0
+            let screenWidth = clusterView1.frame.size.width
+            let screenHeight = clusterView1.frame.size.height
             
+            
+            var scale = CGFloat(1.0)
+            var widthScaled = CGFloat(0)
+            var heightScaled = CGFloat(0)
+            
+            var xOffset = CGFloat(0)
+            var yOffset = CGFloat(0)
+            
+            if screenHeight/screenWidth > CGFloat(imageSize.width)/CGFloat(imageSize.height) {
+                scale = CGFloat(clusterView1.frame.size.height / CGFloat(imageSize.width))
+                widthScaled = CGFloat(imageSize.height)*scale
+         //       let heightScaled = CGFloat(imageSize.width)*scale
+                
+                xOffset = (widthScaled-clusterView1.frame.size.width)/2.0
+
+                NSLog("sizeI widthScaled: \(widthScaled)")
+                NSLog("sizeI clusterView width: \(clusterView1.frame.size.width)")
+                NSLog("sizeI xOffset: \(xOffset)")
+                
+        //        let yOffset = (widthScaled-clusterView1.frame.size.height)/2.0
+
+
+              
+            } else {
+                scale = CGFloat(screenWidth/CGFloat(imageSize.height))
+                heightScaled = CGFloat(imageSize.width)*scale
+                yOffset = (heightScaled-screenHeight)/2.0
+                
+            }
+            
+            
+            let meanXScaled = scale * CGFloat(meanX)
+            let meanYScaled = scale * CGFloat(meanY)
+            let meanXScreen = meanXScaled-xOffset
+            let meanYScreen = meanYScaled-yOffset
+            let avgStdDevScaled = avgStdDev * scale
+            let radius:CGFloat = avgStdDevScaled
+
+            
+
+            
+            if avgStdDev > 150 {
+                if codeIndex == 1 {
+                    self.clusterView1.update(location: CGPoint(x: 0, y: 0), radius: 0)
+    //                pX1Label.text = String(format: "pX1: %.2f", 0.0)
+    //                pY1Label.text = String(format: "pY1: %.2f", 0.0)
+                } else if codeIndex == 2 {
+                    self.clusterView2.update(location: CGPoint(x: 0, y: 0), radius: 0)
+    //                pX2Label.text = String(format: "pX2: %.2f", 0.0)
+    //                pY2Label.text = String(format: "pY2: %.2f", 0.0)
+                }
+            } else {
+                if codeIndex == 1 {
+                    self.clusterPointOnScreen1 = CGPoint(x: meanXScreen, y: CGFloat(meanYScreen))
+                    self.clusterView1.update(location: CGPoint(x: CGFloat(meanXScaled-xOffset), y: CGFloat(meanYScaled-yOffset)), radius: radius)
+                    if !meanX.isNaN && !meanY.isNaN {
+                        pX1Label.text = String(format: "pX1: %.2f", meanX)
+                        pY1Label.text = String(format: "pY1: %.2f", meanY)
+                    }
+                    point1 = CGPoint(x: meanXScreen, y: meanYScreen)
+                } else if codeIndex == 2 {
+                    self.clusterPointOnScreen2 = CGPoint(x: meanXScreen, y: CGFloat(meanYScreen))
+                    self.clusterView2.update(location: CGPoint(x: CGFloat(meanXScaled-xOffset), y: CGFloat(meanYScaled-yOffset)), radius: radius)
+                    if !meanX.isNaN && !meanY.isNaN {
+                        pX2Label.text = String(format: "pX2: %.2f", meanX)
+                        pY2Label.text = String(format: "pY2: %.2f", meanY)
+                    }
+                    point2 = CGPoint(x: meanXScreen, y: meanYScreen)
+                    
+                } else if codeIndex == 3 {
+                    point3 = CGPoint(x: meanXScreen, y: meanYScreen)
+                } else if codeIndex == 4 {
+                    point4 = CGPoint(x: meanXScreen, y: meanYScreen)
+                }
+            }
+        }
+        
+        if let p1=point1, let p2=point2, let p3=point3, let p4=point4 {
+            let anchorPoints = [AnchorPoint(location3d: anchor1Location, location2d: p1),
+                                AnchorPoint(location3d: anchor2Location, location2d: p2),
+                                AnchorPoint(location3d: anchor3Location, location2d: p3),
+                                AnchorPoint(location3d: anchor4Location, location2d: p4)]
+            
+            locationSolver.solveForLocation(intrinsics: cameraIntrinsics, cameraTransform: cameraTransform, anchorPoints: anchorPoints) { (transform, success) in
+                NSLog("transform success: %@", success ? "true" : "false")
+                var validTransform = true
+                for i in 0..<4 {
+                    if transform.columns.0[i].isNaN || transform.columns.1[i].isNaN || transform.columns.2[i].isNaN || transform.columns.3[i].isNaN {
+                        validTransform = false
+                    }
+                    print(String(transform.columns.0[i]) + "\t\t" + String(transform.columns.1[i]) + "\t\t" + String(transform.columns.2[i]) + "\t\t" + String(transform.columns.3[i]))
+                }
+                if validTransform {
+                    self.sceneView.session.setWorldOrigin(relativeTransform: transform)
+                }
+            }
         }
         
         
-        let meanXScaled = scale * CGFloat(meanX)
-        let meanYScaled = scale * CGFloat(meanY)
-        let meanXScreen = meanXScaled-xOffset
-        let meanYScreen = meanYScaled-yOffset
-        let avgStdDevScaled = avgStdDev * scale
-        let radius:CGFloat = avgStdDevScaled
-
-        
-        
-
-        
-        if avgStdDev > 150 {
-            if codeIndex == 1 {
-                self.clusterView1.update(location: CGPoint(x: 0, y: 0), radius: 0)
-//                pX1Label.text = String(format: "pX1: %.2f", 0.0)
-//                pY1Label.text = String(format: "pY1: %.2f", 0.0)
-            } else if codeIndex == 2 {
-                self.clusterView2.update(location: CGPoint(x: 0, y: 0), radius: 0)
-//                pX2Label.text = String(format: "pX2: %.2f", 0.0)
-//                pY2Label.text = String(format: "pY2: %.2f", 0.0)
-            }
-        } else {
-            if codeIndex == 1 {
-                self.clusterPointOnScreen1 = CGPoint(x: meanXScreen, y: CGFloat(meanYScreen))
-                self.clusterView1.update(location: CGPoint(x: CGFloat(meanXScaled-xOffset), y: CGFloat(meanYScaled-yOffset)), radius: radius)
-                if !meanX.isNaN && !meanY.isNaN {
-                    pX1Label.text = String(format: "pX1: %.2f", meanX)
-                    pY1Label.text = String(format: "pY1: %.2f", meanY)
-                }
-            } else if codeIndex == 2 {
-                self.clusterPointOnScreen2 = CGPoint(x: meanXScreen, y: CGFloat(meanYScreen))
-                self.clusterView2.update(location: CGPoint(x: CGFloat(meanXScaled-xOffset), y: CGFloat(meanYScaled-yOffset)), radius: radius)
-                if !meanX.isNaN && !meanY.isNaN {
-                    pX2Label.text = String(format: "pX2: %.2f", meanX)
-                    pY2Label.text = String(format: "pY2: %.2f", meanY)
-                }
-            }
-        }
     }
     
     

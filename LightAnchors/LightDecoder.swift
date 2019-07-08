@@ -12,12 +12,20 @@ import MetalKit
 import Accelerate
 
 
+struct LightDecoderScreenPoint {
+    var codeIndex: Int
+    var meanX: Float
+    var meanY: Float
+    var stdDevX: Float
+    var stdDevY: Float
+}
+
 let  dataCodesArray: [UInt16] = [0xA95,0xB6D,0xD6B,0xC93];
 
 protocol LightDecoderDelegate {
     
     func lightDecoder(_ :LightDecoder, didUpdateResultImage resultImage: UIImage)
-    func lightDecoder(_ :LightDecoder, didUpdate codeIndex:Int, meanX: Float, meanY: Float, stdDevX: Float, stdDevY: Float)
+    func lightDecoder(_ :LightDecoder, didUpdate screenPoints: [LightDecoderScreenPoint])
 }
 
 
@@ -871,7 +879,7 @@ class LightDecoder: NSObject {
         
         
         let dilatedAndErodedMatchBuffer = UnsafeMutablePointer<UInt32>.allocate(capacity: bufferLength)
-        
+        var results = [LightDecoderScreenPoint]()
 
         for i in stride(from: 0, to: dataCodesArray.count, by: 1) {
             let mask: UInt32 = 1 << i
@@ -898,13 +906,16 @@ class LightDecoder: NSObject {
                     dilatedAndErodedMatchBuffer[pixelIndex] |= mask
                 }
             }
+            
+            results.append(LightDecoderScreenPoint(codeIndex: codeNumber, meanX: meanX, meanY: meanY, stdDevX: stdDevX, stdDevY: stdDevY))
 
-            DispatchQueue.main.async {
-                self.delegate?.lightDecoder(self, didUpdate: codeNumber, meanX: meanX, meanY: meanY, stdDevX: stdDevX, stdDevY: stdDevY)
-
-            }
             
             free(singleCodeMatchBuffer)
+            
+        }
+        
+        DispatchQueue.main.async {
+            self.delegate?.lightDecoder(self, didUpdate: results)
             
         }
             
