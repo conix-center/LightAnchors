@@ -108,6 +108,8 @@ class ViewController: UIViewController {
     let locationSolver = LocationSolver()
     
     var imageSize = ImageSize(width: 0, height: 0)
+
+    let firstNode = SCNNode()
     
     let anchor1Location = SCNVector3(0,1,0)
     let anchor2Location = SCNVector3(1,1,0)
@@ -370,18 +372,19 @@ class ViewController: UIViewController {
         pY2Label.textColor = UIColor.red
         
 
+        scene.rootNode.addChildNode(firstNode)
         
       //  lightDecoder.evaluateResults()
         self.navigationController?.navigationBar.isHidden = true
         let nodeRadius = Float(0.1)
         let node1 = createSphere(at: anchor1Location, radius:nodeRadius, color: .green)
-        scene.rootNode.addChildNode(node1)
+        firstNode.addChildNode(node1)
         let node2 = createSphere(at: anchor2Location, radius: nodeRadius, color: .red)
-        scene.rootNode.addChildNode(node2)
+        firstNode.addChildNode(node2)
         let node3 = createSphere(at: anchor3Location, radius: nodeRadius, color: .blue)
-        scene.rootNode.addChildNode(node3)
+        firstNode.addChildNode(node3)
         let node4 = createSphere(at: anchor4Location, radius: nodeRadius, color: .yellow)
-        scene.rootNode.addChildNode(node4)
+        firstNode.addChildNode(node4)
     }
 
     
@@ -1107,10 +1110,16 @@ extension ViewController: LightDecoderDelegate {
         }
         
         if let p1=point1, let p2=point2, let p3=point3, let p4=point4 {
-            let anchorPoints = [AnchorPoint(location3d: anchor1Location, location2d: p1),
-                                AnchorPoint(location3d: anchor2Location, location2d: p2),
-                                AnchorPoint(location3d: anchor3Location, location2d: p3),
-                                AnchorPoint(location3d: anchor4Location, location2d: p4)]
+            let anchorPoints = [AnchorPoint(location3d: anchor1Location, location2d: CGPoint(x: p1.y, y: 720-p1.x)),
+                                AnchorPoint(location3d: anchor2Location, location2d: CGPoint(x: p2.y, y: 720-p2.x)),
+                                AnchorPoint(location3d: anchor3Location, location2d: CGPoint(x: p3.y, y: 720-p3.x)),
+                                AnchorPoint(location3d: anchor4Location, location2d: CGPoint(x: p4.y, y: 720-p4.x))]
+            
+            NSLog("p1.x: \(p1.x), p1.y: \(p1.y)")
+            NSLog("p2.x: \(p2.x), p2.y: \(p2.y)")
+            NSLog("p3.x: \(p3.x), p3.y: \(p3.y)")
+            NSLog("p4.x: \(p4.x), p4.y: \(p4.y)")
+            
             
             locationSolver.solveForLocation(intrinsics: cameraIntrinsics, cameraTransform: cameraTransform, anchorPoints: anchorPoints) { (transform, success) in
                 NSLog("transform success: %@", success ? "true" : "false")
@@ -1122,7 +1131,8 @@ extension ViewController: LightDecoderDelegate {
                     print(String(transform.columns.0[i]) + "\t\t" + String(transform.columns.1[i]) + "\t\t" + String(transform.columns.2[i]) + "\t\t" + String(transform.columns.3[i]))
                 }
                 if validTransform {
-                    self.sceneView.session.setWorldOrigin(relativeTransform: transform)
+                    self.firstNode.transform = SCNMatrix4.init(transform.transpose)
+                    //self.sceneView.session.setWorldOrigin(relativeTransform: transform)
                 }
             }
         }

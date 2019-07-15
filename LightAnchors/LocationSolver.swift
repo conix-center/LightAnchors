@@ -20,6 +20,12 @@ class LocationSolver: NSObject {
     func solveForLocation(intrinsics: simd_float3x3, cameraTransform: simd_float4x4, anchorPoints:[AnchorPoint], callback: @escaping ((simd_float4x4, Bool)->()))  {
         DispatchQueue.global(qos: .default).async {
             
+            NSLog("intrinsics")
+            self.printMatrix(intrinsics)
+            
+            NSLog("extrinsics")
+            self.printMatrix(cameraTransform)
+            
             let correctedIntrinsics = self.convert(matrix: intrinsics)
             let worldTransform = cameraTransform.inverse
             let numPoints = anchorPoints.count
@@ -87,7 +93,8 @@ class LocationSolver: NSObject {
             newTransform[2][2] = Float(xStar[0])
             newTransform[3][2] = Float(xStar[4])
             newTransform[3][3] = Float(1)
-            let rTransform = cameraTransform * newTransform * worldTransform
+//            let rTransform = cameraTransform * newTransform * worldTransform
+            let rTransform = worldTransform * newTransform * cameraTransform
             
             DispatchQueue.main.async {
                 callback(rTransform, success)
