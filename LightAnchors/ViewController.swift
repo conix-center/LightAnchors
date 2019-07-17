@@ -1110,18 +1110,36 @@ extension ViewController: LightDecoderDelegate {
         }
         
         if let p1=point1, let p2=point2, let p3=point3, let p4=point4 {
-            let anchorPoints = [AnchorPoint(location3d: anchor1Location, location2d: CGPoint(x: p1.y, y: 720-p1.x)),
-                                AnchorPoint(location3d: anchor2Location, location2d: CGPoint(x: p2.y, y: 720-p2.x)),
-                                AnchorPoint(location3d: anchor3Location, location2d: CGPoint(x: p3.y, y: 720-p3.x)),
-                                AnchorPoint(location3d: anchor4Location, location2d: CGPoint(x: p4.y, y: 720-p4.x))]
+            let anchorPoints = [AnchorPoint(location3d: anchor1Location,
+                                            location2d: CGPoint(x: p1.y, y: CGFloat(imageSize.height)-p1.x)),
+                                AnchorPoint(location3d: anchor2Location,
+                                            location2d: CGPoint(x: p2.y, y: CGFloat(imageSize.height)-p2.x)),
+                                AnchorPoint(location3d: anchor3Location,
+                                            location2d: CGPoint(x: p3.y, y: CGFloat(imageSize.height)-p3.x)),
+                                AnchorPoint(location3d: anchor4Location,
+                                            location2d: CGPoint(x: p4.y, y: CGFloat(imageSize.height)-p4.x))]
+            let ct = simd_double4x4(cameraTransform)
+            let ci = simd_double3x3(cameraIntrinsics)
             
-            NSLog("p1.x: \(p1.x), p1.y: \(p1.y)")
-            NSLog("p2.x: \(p2.x), p2.y: \(p2.y)")
-            NSLog("p3.x: \(p3.x), p3.y: \(p3.y)")
-            NSLog("p4.x: \(p4.x), p4.y: \(p4.y)")
+//            let anchorPoints = [AnchorPoint(location3d: anchor1Location,
+//                                            location2d: CGPoint(x: 480.689730834961, y: 396.2117563883463)),
+//                                AnchorPoint(location3d: anchor2Location,
+//                                            location2d: CGPoint(x: 484.14217783610025, y: 141.3753122965494)),
+//                                AnchorPoint(location3d: anchor3Location,
+//                                            location2d: CGPoint(x: 954.0138305664062, y: 140.217827351888)),
+//                                AnchorPoint(location3d: anchor4Location,
+//                                            location2d: CGPoint(x: 848.7600453694662, y: 423.5507278442383))]
+//
+//            let ct = simd_double4x4(simd_double4(0.005047297570854425, -0.9977597594261169, 0.06670882552862167, 0.0),
+//                                    simd_double4(0.9994179010391235, 0.00278222793713212, -0.03400397300720215, 0.0),
+//                                    simd_double4(0.03374219685792923, 0.06684162467718124, 0.9971930384635925, 0.0),
+//                                    simd_double4(0.002935945987701416, -0.0066966712474823, 0.012121886946260929, 1.0))
+//
+//            let ci = simd_double3x3(columns: (simd_double3(1015.6875610351562, 0.0, 0.0),
+//                                              simd_double3(0.0, 1015.6875610351562, 0.0),
+//                                              simd_double3(639.5, 359.5, 1.0)))
             
-            
-            locationSolver.solveForLocation(intrinsics: cameraIntrinsics, cameraTransform: cameraTransform, anchorPoints: anchorPoints) { (transform, success) in
+            locationSolver.solveForLocation(intrinsics: ci, cameraTransform: ct, anchorPoints: anchorPoints) { (transform, success) in
                 NSLog("transform success: %@", success ? "true" : "false")
                 var validTransform = true
                 for i in 0..<4 {
@@ -1131,8 +1149,8 @@ extension ViewController: LightDecoderDelegate {
                     print(String(transform.columns.0[i]) + "\t\t" + String(transform.columns.1[i]) + "\t\t" + String(transform.columns.2[i]) + "\t\t" + String(transform.columns.3[i]))
                 }
                 if validTransform {
-                    self.firstNode.transform = SCNMatrix4.init(transform.transpose)
-                    //self.sceneView.session.setWorldOrigin(relativeTransform: transform)
+                    NSLog("valid")
+                    self.firstNode.transform = SCNMatrix4.init(transform)
                 }
             }
         }
@@ -1141,6 +1159,83 @@ extension ViewController: LightDecoderDelegate {
     }
     
     
+}
+
+
+extension simd_float4x4 {
+    init(_ m: simd_double4x4) {
+        self.init()
+        self.columns.0.x = Float(m.columns.0.x)
+        self.columns.0.y = Float(m.columns.0.y)
+        self.columns.0.z = Float(m.columns.0.z)
+        self.columns.0.w = Float(m.columns.0.w)
+        self.columns.1.x = Float(m.columns.1.x)
+        self.columns.1.y = Float(m.columns.1.y)
+        self.columns.1.z = Float(m.columns.1.z)
+        self.columns.1.w = Float(m.columns.1.w)
+        self.columns.2.x = Float(m.columns.2.x)
+        self.columns.2.y = Float(m.columns.2.y)
+        self.columns.2.z = Float(m.columns.2.z)
+        self.columns.2.w = Float(m.columns.2.w)
+        self.columns.3.x = Float(m.columns.3.x)
+        self.columns.3.y = Float(m.columns.3.y)
+        self.columns.3.z = Float(m.columns.3.z)
+        self.columns.3.w = Float(m.columns.3.w)
+    }
+}
+
+
+extension simd_float3x3 {
+    init(_ m: simd_double3x3) {
+        self.init()
+        self.columns.0.x = Float(m.columns.0.x)
+        self.columns.0.y = Float(m.columns.0.y)
+        self.columns.0.z = Float(m.columns.0.z)
+        self.columns.1.x = Float(m.columns.1.x)
+        self.columns.1.y = Float(m.columns.1.y)
+        self.columns.1.z = Float(m.columns.1.z)
+        self.columns.2.x = Float(m.columns.2.x)
+        self.columns.2.y = Float(m.columns.2.y)
+        self.columns.2.z = Float(m.columns.2.z)
+    }
+}
+
+extension simd_double4x4 {
+    init(_ m: simd_float4x4) {
+        self.init()
+        self.columns.0.x = Double(m.columns.0.x)
+        self.columns.0.y = Double(m.columns.0.y)
+        self.columns.0.z = Double(m.columns.0.z)
+        self.columns.0.w = Double(m.columns.0.w)
+        self.columns.1.x = Double(m.columns.1.x)
+        self.columns.1.y = Double(m.columns.1.y)
+        self.columns.1.z = Double(m.columns.1.z)
+        self.columns.1.w = Double(m.columns.1.w)
+        self.columns.2.x = Double(m.columns.2.x)
+        self.columns.2.y = Double(m.columns.2.y)
+        self.columns.2.z = Double(m.columns.2.z)
+        self.columns.2.w = Double(m.columns.2.w)
+        self.columns.3.x = Double(m.columns.3.x)
+        self.columns.3.y = Double(m.columns.3.y)
+        self.columns.3.z = Double(m.columns.3.z)
+        self.columns.3.w = Double(m.columns.3.w)
+    }
+}
+
+
+extension simd_double3x3 {
+    init(_ m: simd_float3x3) {
+        self.init()
+        self.columns.0.x = Double(m.columns.0.x)
+        self.columns.0.y = Double(m.columns.0.y)
+        self.columns.0.z = Double(m.columns.0.z)
+        self.columns.1.x = Double(m.columns.1.x)
+        self.columns.1.y = Double(m.columns.1.y)
+        self.columns.1.z = Double(m.columns.1.z)
+        self.columns.2.x = Double(m.columns.2.x)
+        self.columns.2.y = Double(m.columns.2.y)
+        self.columns.2.z = Double(m.columns.2.z)
+    }
 }
 
 
