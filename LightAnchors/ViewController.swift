@@ -322,6 +322,8 @@ class ViewController: UIViewController {
         configuration.isLightEstimationEnabled = true
         configuration.videoFormat = ARWorldTrackingConfiguration.supportedVideoFormats.last!
         imageSize = ImageSize(width: Int(configuration.videoFormat.imageResolution.width), height: Int(configuration.videoFormat.imageResolution.height))
+        
+  
         resolutionLabel.text = String(format: "w: %d h: %d", imageSize.width, imageSize.height)
         NSLog("image size width: \(imageSize.width) height: \(imageSize.height)")
         for format in ARWorldTrackingConfiguration.supportedVideoFormats {
@@ -1013,21 +1015,23 @@ extension ViewController: LightDecoderDelegate {
         imageView.image = resultImage
     }
     
-    func lightDecoder(_: LightDecoder, didUpdate screenPoints: [LightDecoderScreenPoint]) {
+    func lightDecoder(_: LightDecoder, didUpdate detectedPoints: [LightDecoderDetectedPoint]) {
         
         var point1: CGPoint?
         var point2: CGPoint?
         var point3: CGPoint?
         var point4: CGPoint?
         
-        for screenPoint in screenPoints {
-            let codeIndex = screenPoint.codeIndex
-            let meanX = screenPoint.meanX
-            let meanY = screenPoint.meanY
-            let stdDevX = screenPoint.stdDevX
-            let stdDevY = screenPoint.stdDevY
+        for detectedPoint in detectedPoints {
+            let codeIndex = detectedPoint.codeIndex
+            let imageMeanX = detectedPoint.meanX
+            let imageMeanY = detectedPoint.meanY
+            let imageStdDevX = detectedPoint.stdDevX
+            let imageStdDevY = detectedPoint.stdDevY
+    
+            let (displayMeanX, displayMeanY, displayStdDevX, displayStdDevY) = lightDecoder.rotateToPortrait(initialWidth: Float(UIScreen.main.bounds.size.width), initialHeight: Float(UIScreen.main.bounds.size.height), meanX: imageMeanX, meanY: imageMeanY, stdDevX: imageStdDevX, stdDevY: imageStdDevY)
             
-            let avgStdDev = CGFloat((stdDevX + stdDevY) / 2.0)
+            let avgStdDev = CGFloat((displayStdDevX + displayStdDevY) / 2.0)
             
             let screenWidth = clusterView1.frame.size.width
             let screenHeight = clusterView1.frame.size.height
@@ -1039,6 +1043,8 @@ extension ViewController: LightDecoderDelegate {
             
             var xOffset = CGFloat(0)
             var yOffset = CGFloat(0)
+            NSLog("imageSize.width: \(imageSize.width), imageSize.height: \(imageSize.height)")
+            NSLog("screenWidth: \(screenWidth), screenHeight: \(screenHeight)")
             
             if screenHeight/screenWidth > CGFloat(imageSize.width)/CGFloat(imageSize.height) {
                 scale = CGFloat(clusterView1.frame.size.height / CGFloat(imageSize.width))
@@ -1063,8 +1069,8 @@ extension ViewController: LightDecoderDelegate {
             }
             
             
-            let meanXScaled = scale * CGFloat(meanX)
-            let meanYScaled = scale * CGFloat(meanY)
+            let meanXScaled = scale * CGFloat(displayMeanX)
+            let meanYScaled = scale * CGFloat(displayMeanY)
             let meanXScreen = meanXScaled-xOffset
             let meanYScreen = meanYScaled-yOffset
             let avgStdDevScaled = avgStdDev * scale
@@ -1087,37 +1093,33 @@ extension ViewController: LightDecoderDelegate {
                 if codeIndex == 1 {
                     self.clusterPointOnScreen1 = CGPoint(x: meanXScreen, y: CGFloat(meanYScreen))
                     self.clusterView1.update(location: CGPoint(x: CGFloat(meanXScaled-xOffset), y: CGFloat(meanYScaled-yOffset)), radius: radius)
-                    if !meanX.isNaN && !meanY.isNaN {
-                        pX1Label.text = String(format: "pX1: %.2f", meanX)
-                        pY1Label.text = String(format: "pY1: %.2f", meanY)
+                    if !imageMeanX.isNaN && !imageMeanY.isNaN {
+                        pX1Label.text = String(format: "pX1: %.2f", imageMeanX)
+                        pY1Label.text = String(format: "pY1: %.2f", imageMeanY)
                     }
-                    point1 = CGPoint(x: meanXScreen, y: meanYScreen)
+                    point1 = CGPoint(x: CGFloat(imageMeanX), y: CGFloat(imageMeanY))
                 } else if codeIndex == 2 {
                     self.clusterPointOnScreen2 = CGPoint(x: meanXScreen, y: CGFloat(meanYScreen))
                     self.clusterView2.update(location: CGPoint(x: CGFloat(meanXScaled-xOffset), y: CGFloat(meanYScaled-yOffset)), radius: radius)
-                    if !meanX.isNaN && !meanY.isNaN {
-                        pX2Label.text = String(format: "pX2: %.2f", meanX)
-                        pY2Label.text = String(format: "pY2: %.2f", meanY)
+                    if !imageMeanX.isNaN && !imageMeanY.isNaN {
+                        pX2Label.text = String(format: "pX2: %.2f", imageMeanX)
+                        pY2Label.text = String(format: "pY2: %.2f", imageMeanY)
                     }
-                    point2 = CGPoint(x: meanXScreen, y: meanYScreen)
+                    point2 = CGPoint(x: CGFloat(imageMeanX), y: CGFloat(imageMeanY))
                     
                 } else if codeIndex == 3 {
-                    point3 = CGPoint(x: meanXScreen, y: meanYScreen)
+                    point3 = CGPoint(x: CGFloat(imageMeanX), y: CGFloat(imageMeanY))
                 } else if codeIndex == 4 {
-                    point4 = CGPoint(x: meanXScreen, y: meanYScreen)
+                    point4 = CGPoint(x: CGFloat(imageMeanX), y: CGFloat(imageMeanY))
                 }
             }
         }
         
         if let p1=point1, let p2=point2, let p3=point3, let p4=point4 {
-            let anchorPoints = [AnchorPoint(location3d: anchor1Location,
-                                            location2d: CGPoint(x: p1.y, y: CGFloat(imageSize.height)-p1.x)),
-                                AnchorPoint(location3d: anchor2Location,
-                                            location2d: CGPoint(x: p2.y, y: CGFloat(imageSize.height)-p2.x)),
-                                AnchorPoint(location3d: anchor3Location,
-                                            location2d: CGPoint(x: p3.y, y: CGFloat(imageSize.height)-p3.x)),
-                                AnchorPoint(location3d: anchor4Location,
-                                            location2d: CGPoint(x: p4.y, y: CGFloat(imageSize.height)-p4.x))]
+            let anchorPoints = [AnchorPoint(location3d: anchor1Location, location2d: p1),
+                                AnchorPoint(location3d: anchor2Location, location2d: p2),
+                                AnchorPoint(location3d: anchor3Location, location2d: p3),
+                                AnchorPoint(location3d: anchor4Location, location2d: p4)]
             let ct = simd_double4x4(cameraTransform)
             let ci = simd_double3x3(cameraIntrinsics)
             

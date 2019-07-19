@@ -12,7 +12,7 @@ import MetalKit
 import Accelerate
 
 
-struct LightDecoderScreenPoint {
+struct LightDecoderDetectedPoint {
     var codeIndex: Int
     var meanX: Float
     var meanY: Float
@@ -25,7 +25,7 @@ let  dataCodesArray: [UInt16] = [0xA95,0xB6D,0xD6B,0xC93];
 protocol LightDecoderDelegate {
     
     func lightDecoder(_ :LightDecoder, didUpdateResultImage resultImage: UIImage)
-    func lightDecoder(_ :LightDecoder, didUpdate screenPoints: [LightDecoderScreenPoint])
+    func lightDecoder(_ :LightDecoder, didUpdate detectedPoints: [LightDecoderDetectedPoint])
 }
 
 
@@ -879,7 +879,7 @@ class LightDecoder: NSObject {
         
         
         let dilatedAndErodedMatchBuffer = UnsafeMutablePointer<UInt32>.allocate(capacity: bufferLength)
-        var results = [LightDecoderScreenPoint]()
+        var results = [LightDecoderDetectedPoint]()
 
         for i in stride(from: 0, to: dataCodesArray.count, by: 1) {
             let mask: UInt32 = 1 << i
@@ -899,7 +899,7 @@ class LightDecoder: NSObject {
             self.setupDilationAndErosionGPU()
             let dilatedAndErodedBuffer = dilateAndErodeGPU(inputBuffer: singleCodeMatchBuffer, width: self.width, height: self.height)
             var (meanX, meanY, stdDevX, stdDevY) = self.calculateMeanAndStdDev(from: dilatedAndErodedBuffer, width: self.width, height: self.height)
-            (meanX, meanY, stdDevX, stdDevY) = rotate(initialWidth: Float(self.width), initialHeight: Float(self.height), meanX: meanX, meanY: meanY, stdDevX: stdDevX, stdDevY: stdDevY)
+
             
             for pixelIndex in 0..<bufferLength {
                 if dilatedAndErodedBuffer[pixelIndex] > 0x7F/*!= 0*/ {
@@ -907,7 +907,7 @@ class LightDecoder: NSObject {
                 }
             }
             
-            results.append(LightDecoderScreenPoint(codeIndex: codeNumber, meanX: meanX, meanY: meanY, stdDevX: stdDevX, stdDevY: stdDevY))
+            results.append(LightDecoderDetectedPoint(codeIndex: codeNumber, meanX: meanX, meanY: meanY, stdDevX: stdDevX, stdDevY: stdDevY))
 
             
             free(singleCodeMatchBuffer)
@@ -1456,7 +1456,7 @@ class LightDecoder: NSObject {
     }
     
     
-    func rotate(initialWidth: Float, initialHeight: Float, meanX: Float, meanY: Float, stdDevX: Float, stdDevY: Float) -> (meanX: Float, meanY: Float, stdDevX: Float, stdDevY: Float) {
+    func rotateToPortrait(initialWidth: Float, initialHeight: Float, meanX: Float, meanY: Float, stdDevX: Float, stdDevY: Float) -> (meanX: Float, meanY: Float, stdDevX: Float, stdDevY: Float) {
         return (initialHeight - meanY, meanX, stdDevY, stdDevX)
     }
     
