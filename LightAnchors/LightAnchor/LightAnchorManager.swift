@@ -9,14 +9,14 @@
 import UIKit
 import CoreBluetooth
 
-protocol LightAnchorManagerDelegate {
-    func lightAnchorManager(bleManager: LightAnchorManager, didDiscoverLightAnchorIdentifiedBy lightAnchorId: Int)
-    func lightAnchorManagerDidDisconnectFromLightAnchor(bleManager: LightAnchorManager)
+protocol LightAnchorBleManagerDelegate {
+    func lightAnchorManager(bleManager: LightAnchorBleManager, didDiscoverLightAnchorIdentifiedBy lightAnchorId: Int)
+    func lightAnchorManagerDidDisconnectFromLightAnchor(bleManager: LightAnchorBleManager)
 }
 
-class LightAnchorManager: NSObject {
+class LightAnchorBleManager: NSObject {
     
-    var delegate: LightAnchorManagerDelegate?
+    var delegate: LightAnchorBleManagerDelegate?
     
     /* bluetooth */
     var bleManager:CBCentralManager?
@@ -87,7 +87,7 @@ class LightAnchorManager: NSObject {
 }
 
 
-extension LightAnchorManager: CBCentralManagerDelegate {
+extension LightAnchorBleManager: CBCentralManagerDelegate {
     func centralManagerDidUpdateState(_ central: CBCentralManager) {
         switch (central.state) {
         case .poweredOn:
@@ -159,7 +159,7 @@ extension LightAnchorManager: CBCentralManagerDelegate {
 
 
 
-extension LightAnchorManager: CBPeripheralDelegate {
+extension LightAnchorBleManager: CBPeripheralDelegate {
     
     func peripheral(_ peripheral: CBPeripheral, didDiscoverServices error: Error?) {
         NSLog("didDiscoverServices")

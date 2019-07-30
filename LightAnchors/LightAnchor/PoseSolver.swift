@@ -15,9 +15,9 @@ struct AnchorPoint {
     var location2d: CGPoint
 }
 
-class LocationSolver: NSObject {
+class PoseSolver: NSObject {
     
-    func solveForLocation(intrinsics: simd_double3x3, cameraTransform: simd_double4x4, anchorPoints:[AnchorPoint], callback: @escaping ((simd_double4x4, Bool)->()))  {
+    func solveForPose(intrinsics: simd_double3x3, cameraTransform: simd_double4x4, anchorPoints:[AnchorPoint], callback: @escaping ((simd_double4x4, Bool)->()))  {
     
         DispatchQueue.global(qos: .default).async {
             
