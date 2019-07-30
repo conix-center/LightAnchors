@@ -211,11 +211,22 @@ extension LightAnchorPoseManager: LightDecoderDelegate {
             }
         }
         
-        if let p1=point1, let p2=point2, let p3=point3, let p4=point4 {
-            let anchorPoints = [AnchorPoint(location3d: anchor1Location, location2d: p1),
-                                AnchorPoint(location3d: anchor2Location, location2d: p2),
-                                AnchorPoint(location3d: anchor3Location, location2d: p3),
-                                AnchorPoint(location3d: anchor4Location, location2d: p4)]
+        var anchorPoints = [AnchorPoint]()
+        if let p1=point1 {
+            anchorPoints.append(AnchorPoint(location3d: anchor1Location, location2d: p1))
+        }
+        if let p2=point2 {
+            anchorPoints.append(AnchorPoint(location3d: anchor2Location, location2d: p2))
+        }
+        if let p3=point3 {
+            anchorPoints.append(AnchorPoint(location3d: anchor3Location, location2d: p3))
+        }
+        if let p4=point4 {
+            anchorPoints.append(AnchorPoint(location3d: anchor4Location, location2d: p4))
+        }
+        
+        if anchorPoints.count >= 3 {
+
             let ct = simd_double4x4(cameraTransform)
             let ci = simd_double3x3(cameraIntrinsics)
             
@@ -257,8 +268,8 @@ extension LightAnchorPoseManager: LightDecoderDelegate {
                  
                 }
             }
-        }
         
+        }
         
     }
     
