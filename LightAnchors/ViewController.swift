@@ -10,13 +10,14 @@ import UIKit
 import ARKit
 import VideoToolbox
 import CoreMotion
+import LightAnchorFramework
 
 let kLightData = "LightData"
 
-struct ImageSize {
-    var width: Int
-    var height: Int
-}
+let anchor1Location = SCNVector3(0,1,0)
+let anchor2Location = SCNVector3(1,1,0)
+let anchor3Location = SCNVector3(1,0,0)
+let anchor4Location = SCNVector3(0,0,0)
 
 class ViewController: UIViewController {
 
@@ -240,7 +241,7 @@ class ViewController: UIViewController {
         labelStackView.axis = .vertical
         labelStackView.distribution = .fillEqually
         
-        let timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { (timer) in
+        _ = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { (timer) in
             //NSLog("number of frames: \(self.frameCount)")
             self.frameRateLabel.text = "\(self.frameCount) fps"
  //           NSLog("frame rate %d fps", self.frameCount)
@@ -260,13 +261,14 @@ class ViewController: UIViewController {
         let configuration = ARWorldTrackingConfiguration()
         configuration.isLightEstimationEnabled = true
         configuration.videoFormat = ARWorldTrackingConfiguration.supportedVideoFormats.last!
-
+        
+        let anchorLocations = [anchor1Location, anchor2Location, anchor3Location, anchor4Location]
         //poseManager.imageSize = ImageSize(width: Int(configuration.videoFormat.imageResolution.width), height: Int(configuration.videoFormat.imageResolution.height))
-        poseManager = LightAnchorPoseManager(imageWidth: Int(configuration.videoFormat.imageResolution.width), imageHeight: Int(configuration.videoFormat.imageResolution.height))
+        poseManager = LightAnchorPoseManager(imageWidth: Int(configuration.videoFormat.imageResolution.width), imageHeight: Int(configuration.videoFormat.imageResolution.height), anchorLocations: anchorLocations)
         poseManager.delegate = self
   
-        resolutionLabel.text = String(format: "w: %d h: %d", poseManager.imageSize.width, poseManager.imageSize.height)
-        NSLog("image size width: \(poseManager.imageSize.width) height: \(poseManager.imageSize.height)")
+        resolutionLabel.text = String(format: "w: %d h: %d", poseManager.imageWidth, poseManager.imageHeight)
+        NSLog("image size width: \(poseManager.imageWidth) height: \(poseManager.imageHeight)")
         for format in ARWorldTrackingConfiguration.supportedVideoFormats {
             NSLog("format: \(format)")
         }
@@ -449,8 +451,8 @@ class ViewController: UIViewController {
     
     let fovDegreesLandscape: Float = 99
     func angleToLight(using x: Float) -> Float {
-        let width: Float = Float(poseManager.imageSize.width)
-        let height: Float = Float(poseManager.imageSize.height)
+        let width: Float = Float(poseManager.imageWidth)
+        let height: Float = Float(poseManager.imageHeight)
         let fovDegreesPotrait = height/width * fovDegreesLandscape
         let angle = (x - Float(clusterView1.frame.size.width)/2.0)/Float(clusterView1.frame.size.width) * (fovDegreesPotrait/2.0)
         return angle
@@ -478,12 +480,12 @@ class ViewController: UIViewController {
             
             var xOffset = CGFloat(0)
             var yOffset = CGFloat(0)
-            NSLog("imageSize.width: \(poseManager.imageSize.width), imageSize.height: \(poseManager.imageSize.height)")
+            NSLog("imageSize.width: \(poseManager.imageWidth), imageSize.height: \(poseManager.imageHeight)")
             NSLog("screenWidth: \(screenWidth), screenHeight: \(screenHeight)")
             
-            if screenHeight/screenWidth > CGFloat(poseManager.imageSize.width)/CGFloat(poseManager.imageSize.height) {
-                scale = CGFloat(clusterView1.frame.size.height / CGFloat(poseManager.imageSize.width))
-                widthScaled = CGFloat(poseManager.imageSize.height)*scale
+            if screenHeight/screenWidth > CGFloat(poseManager.imageWidth)/CGFloat(poseManager.imageHeight) {
+                scale = CGFloat(clusterView1.frame.size.height / CGFloat(poseManager.imageWidth))
+                widthScaled = CGFloat(poseManager.imageHeight)*scale
                 //       let heightScaled = CGFloat(imageSize.width)*scale
                 
                 xOffset = (widthScaled-clusterView1.frame.size.width)/2.0
@@ -497,8 +499,8 @@ class ViewController: UIViewController {
                 
                 
             } else {
-                scale = CGFloat(screenWidth/CGFloat(poseManager.imageSize.height))
-                heightScaled = CGFloat(poseManager.imageSize.width)*scale
+                scale = CGFloat(screenWidth/CGFloat(poseManager.imageHeight))
+                heightScaled = CGFloat(poseManager.imageWidth)*scale
                 yOffset = (heightScaled-screenHeight)/2.0
                 
             }

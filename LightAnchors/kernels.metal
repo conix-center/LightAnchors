@@ -59,7 +59,7 @@ kernel void matchPreamble(
                           const device uchar4 *prevImage17 [[ buffer(25) ]],
                           const device uchar4 *prevImage18 [[ buffer(26) ]],
                           const device uchar4 *prevImage19 [[ buffer(27) ]],
- 
+                          
                           uint id [[ thread_position_in_grid ]]
                           ) {
     /* preamble detector */
@@ -72,10 +72,10 @@ kernel void matchPreamble(
         baselineBuffers[3] = prevImage16[id];
         
         uchar4 imageBuffers[NUM_DATA_BUFFERS];
-//        imageBuffers[0] = prevImage15[id];
-//        imageBuffers[1] = prevImage14[id];
-//        imageBuffers[2] = prevImage13[id];
-//        imageBuffers[3] = prevImage12[id];
+        //        imageBuffers[0] = prevImage15[id];
+        //        imageBuffers[1] = prevImage14[id];
+        //        imageBuffers[2] = prevImage13[id];
+        //        imageBuffers[3] = prevImage12[id];
         imageBuffers[0] = prevImage11[id];
         imageBuffers[1] = prevImage10[id];
         imageBuffers[2] = prevImage9[id];
@@ -104,14 +104,14 @@ kernel void matchPreamble(
         
         actualDataBuffer[id] = (actualDataBuffer[id] << 1) | bit;
         ushort4 restrictedActualData = actualDataBuffer[id] & 0x0FFF;
-      //  ushort4 restrictedActualData = actualDataBuffer[id];
+        //  ushort4 restrictedActualData = actualDataBuffer[id];
         uint4 matches = 0;
         for (int i=0; i<NUM_DATA_CODES; i++) {
             ushort dataCode = dataCodesBuffer[i];
             uint4 match = (uint4)((restrictedActualData ^ dataCode) == 0);
             matches = matches | (match << i);
         }
-
+        
         if (any(matches != 0) ) {
             uchar4 baselineMinValue = 0xFF;
             uchar4 baselineMaxValue = 0;
@@ -125,7 +125,7 @@ kernel void matchPreamble(
             uint4 acceptedMatches = matches & acceptMask;
             matchBuffer[id] = acceptedMatches;
         }
-
+        
     } else {
         /* how long to keep matches for */
         matchCounterBuffer[id] += (uchar4)(matchBuffer != 0);
@@ -148,12 +148,12 @@ kernel void difference(const device char4 *imageA [[ buffer(0) ]],
                        const device char4 *imageB [[ buffer(1) ]],
                        device char4 *diff [[ buffer(2) ]],
                        uint id [[ thread_position_in_grid ]] ) {
-//    uint firstIndex = id * NUM_PIXELS_PER_THREAD;
-//    uint endIndex = firstIndex+NUM_PIXELS_PER_THREAD;
-//    for (uint i = firstIndex; i<endIndex; i++) {
-//        char d = (char)abs(imageA[i]-imageB[i]);
-//        diff[i] = d;
-//    }
+    //    uint firstIndex = id * NUM_PIXELS_PER_THREAD;
+    //    uint endIndex = firstIndex+NUM_PIXELS_PER_THREAD;
+    //    for (uint i = firstIndex; i<endIndex; i++) {
+    //        char d = (char)abs(imageA[i]-imageB[i]);
+    //        diff[i] = d;
+    //    }
     
     diff[id] = abs(imageA[id]-imageB[id]);
     
