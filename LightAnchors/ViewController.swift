@@ -28,6 +28,9 @@ let anchor4Location = SCNVector3(0,0,0)
 
 class ViewController: UIViewController {
 
+    var logCounter = 1
+    var logURL: URL?
+    
     let sceneView = ARSCNView()
     let scene = SCNScene()
     
@@ -68,6 +71,9 @@ class ViewController: UIViewController {
 //    let testButton = UIButton()
     let showPixelsButton = UIButton()
     
+    let saveButton = UIButton()
+
+    
     /* json logging */
 //    var captureId: Int = 0
 //    var logDict: NSMutableDictionary?
@@ -96,6 +102,7 @@ class ViewController: UIViewController {
  //   var cameraPosition = SCNVector3(0,0,0)
     
     let resolutionLabel = UILabel()
+    let logCounterLabel = UILabel()
     let xLabel = UILabel()
     let yLabel = UILabel()
     let zLabel = UILabel()
@@ -178,6 +185,7 @@ class ViewController: UIViewController {
         }
         
         buttonStackView.addArrangedSubview(captureButton)
+        buttonStackView.addArrangedSubview(saveButton)
      //   buttonStackView.addArrangedSubview(testButton)
         buttonStackView.addArrangedSubview(showPixelsButton)
         buttonStackView.axis = .horizontal
@@ -194,6 +202,18 @@ class ViewController: UIViewController {
         captureButton.addTarget(self, action: #selector(startCapture(sender:)), for: .touchUpInside)
         captureButton.backgroundColor = UIColor.blue
         captureButton.layer.cornerRadius = 20
+        
+        if UI_USER_INTERFACE_IDIOM() == .pad {
+            saveButton.widthAnchor.constraint(equalTo: view.widthAnchor, multiplier: 0.2).isActive = true
+        } else {
+            saveButton.widthAnchor.constraint(equalTo: view.widthAnchor, multiplier: 0.4).isActive = true
+        }
+        saveButton.heightAnchor.constraint(equalTo: buttonStackView.heightAnchor).isActive = true
+        saveButton.setTitle("Save", for: .normal)
+        saveButton.addTarget(self, action: #selector(saveData(sender:)), for: .touchUpInside)
+        saveButton.backgroundColor = UIColor.blue
+        saveButton.layer.cornerRadius = 20
+        
         
         if UI_USER_INTERFACE_IDIOM() == .pad {
             showPixelsButton.widthAnchor.constraint(equalTo: view.widthAnchor, multiplier: 0.2).isActive = true
@@ -232,6 +252,7 @@ class ViewController: UIViewController {
         
         view.addSubview(labelStackView)
         labelStackView.addArrangedSubview(resolutionLabel)
+        labelStackView.addArrangedSubview(logCounterLabel)
         labelStackView.addArrangedSubview(xLabel)
         labelStackView.addArrangedSubview(yLabel)
         labelStackView.addArrangedSubview(zLabel)
@@ -315,6 +336,8 @@ class ViewController: UIViewController {
         updateShowPixelsButton()
         
         resolutionLabel.textColor = UIColor.red
+        logCounterLabel.textColor = UIColor.red
+        logCounterLabel.text = String(format: "log count: %d", logCounter)
         xLabel.textColor = UIColor.red
         yLabel.textColor = UIColor.red
         zLabel.textColor = UIColor.red
@@ -338,6 +361,13 @@ class ViewController: UIViewController {
         firstNode.addChildNode(node3)
         let node4 = createSphere(at: anchor4Location, radius: nodeRadius, color: .yellow)
         firstNode.addChildNode(node4)
+        
+        let paths = NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true)
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd-hh-mm-ss"
+        let logPath = String(format: "%@/Log-%@.csv", paths[0], dateFormatter.string(from: Date()))
+        logURL = URL(fileURLWithPath: logPath)
+
     }
 
     
@@ -356,6 +386,22 @@ class ViewController: UIViewController {
             lightDataLabel.text = ""
         }
         updateCaptureButton()
+    }
+    
+    @objc func saveData(sender: UIButton) {
+        if let url = logURL {
+            do {
+                try String(format: "%d", logCounter).appendLine(to: url)
+                try xLabel.text!.appendLine(to: url)
+                try yLabel.text!.appendLine(to: url)
+                try zLabel.text!.appendLine(to: url)
+                try "".appendLine(to: url)
+            } catch {
+                
+            }
+            logCounter += 1
+            logCounterLabel.text = String(format: "log count: %d", logCounter)
+        }
     }
     
     

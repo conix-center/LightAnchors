@@ -10,8 +10,8 @@
 		0FF7C0F51D0B74186887A1F1 /* Pods_LightAnchorsUITests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 05C621DE260EAF15ED278953 /* Pods_LightAnchorsUITests.framework */; };
 		1C4D7CF28630A57034699C40 /* Pods_LightAnchors.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3BE12FB78B5070BF62CD0DBE /* Pods_LightAnchors.framework */; };
 		3309515F11427810EDFB0EE6 /* Pods_LightAnchorsTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F1311B24491BE9B212BA1053 /* Pods_LightAnchorsTests.framework */; };
-		5B662E5223352C3000369F55 /* LightAnchorFramework.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5B662E5023352C2900369F55 /* LightAnchorFramework.framework */; };
-		5B662E5323352C3000369F55 /* LightAnchorFramework.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 5B662E5023352C2900369F55 /* LightAnchorFramework.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		5B662E5523356E6000369F55 /* String+append.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B662E5423356E6000369F55 /* String+append.swift */; };
+		5B68614C233580A200CB1444 /* LightAnchorFramework.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5B68614B233580A200CB1444 /* LightAnchorFramework.framework */; };
 		5B6E33D121B6E248000B31E6 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B6E33D021B6E248000B31E6 /* AppDelegate.swift */; };
 		5B6E33D321B6E248000B31E6 /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B6E33D221B6E248000B31E6 /* ViewController.swift */; };
 		5B6E33D821B6E24A000B31E6 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 5B6E33D721B6E24A000B31E6 /* Assets.xcassets */; };
@@ -51,7 +51,6 @@
 			dstPath = "";
 			dstSubfolderSpec = 10;
 			files = (
-				5B662E5323352C3000369F55 /* LightAnchorFramework.framework in Embed Frameworks */,
 			);
 			name = "Embed Frameworks";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -63,7 +62,8 @@
 		35C01BB11E3789A19AD4277C /* Pods-LightAnchors.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-LightAnchors.release.xcconfig"; path = "Pods/Target Support Files/Pods-LightAnchors/Pods-LightAnchors.release.xcconfig"; sourceTree = "<group>"; };
 		3BE12FB78B5070BF62CD0DBE /* Pods_LightAnchors.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_LightAnchors.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		43ED1FA7B9EF205C3E1E41DC /* Pods-LightAnchorsTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-LightAnchorsTests.release.xcconfig"; path = "Pods/Target Support Files/Pods-LightAnchorsTests/Pods-LightAnchorsTests.release.xcconfig"; sourceTree = "<group>"; };
-		5B662E5023352C2900369F55 /* LightAnchorFramework.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = LightAnchorFramework.framework; sourceTree = "<group>"; };
+		5B662E5423356E6000369F55 /* String+append.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "String+append.swift"; sourceTree = "<group>"; };
+		5B68614B233580A200CB1444 /* LightAnchorFramework.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = LightAnchorFramework.framework; sourceTree = "<group>"; };
 		5B6E33CD21B6E248000B31E6 /* LightAnchors.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LightAnchors.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		5B6E33D021B6E248000B31E6 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		5B6E33D221B6E248000B31E6 /* ViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewController.swift; sourceTree = "<group>"; };
@@ -97,7 +97,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				1C4D7CF28630A57034699C40 /* Pods_LightAnchors.framework in Frameworks */,
-				5B662E5223352C3000369F55 /* LightAnchorFramework.framework in Frameworks */,
+				5B68614C233580A200CB1444 /* LightAnchorFramework.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -123,7 +123,7 @@
 		08F6673109F3F64963D3E94D /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
-				5B662E5023352C2900369F55 /* LightAnchorFramework.framework */,
+				5B68614B233580A200CB1444 /* LightAnchorFramework.framework */,
 				3BE12FB78B5070BF62CD0DBE /* Pods_LightAnchors.framework */,
 				F1311B24491BE9B212BA1053 /* Pods_LightAnchorsTests.framework */,
 				05C621DE260EAF15ED278953 /* Pods_LightAnchorsUITests.framework */,
@@ -158,6 +158,7 @@
 			children = (
 				5B6E33D021B6E248000B31E6 /* AppDelegate.swift */,
 				5B6E33D221B6E248000B31E6 /* ViewController.swift */,
+				5B662E5423356E6000369F55 /* String+append.swift */,
 				5BA610952235B53F00C3C000 /* ClusterView.swift */,
 				5BC4347B2208F4D60029305F /* SettingsViewController.swift */,
 				5B6E33FE21B874B4000B31E6 /* LocationView.swift */,
@@ -421,6 +422,7 @@
 				5B936BA422F331310034E0D3 /* kernels.metal in Sources */,
 				5BC4347C2208F4D60029305F /* SettingsViewController.swift in Sources */,
 				5B6E33FF21B874B4000B31E6 /* LocationView.swift in Sources */,
+				5B662E5523356E6000369F55 /* String+append.swift in Sources */,
 				5B6E340121B9C8A2000B31E6 /* Plane.swift in Sources */,
 				5B6E33D121B6E248000B31E6 /* AppDelegate.swift in Sources */,
 				5BE4562622331058006BC514 /* Thread.swift in Sources */,
