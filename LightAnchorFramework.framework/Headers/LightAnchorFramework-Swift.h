@@ -198,7 +198,8 @@ SWIFT_CLASS("_TtC20LightAnchorFramework22LightAnchorPoseManager")
 @property (nonatomic, copy) NSArray<NSValue *> * _Nonnull anchorLocations;
 - (nonnull instancetype)initWithImageWidth:(NSInteger)imageWidth imageHeight:(NSInteger)imageHeight anchorLocations:(NSArray<NSValue *> * _Nonnull)anchorLocations OBJC_DESIGNATED_INITIALIZER;
 - (void)processWithFrame:(ARFrame * _Nonnull)frame;
-- (void)toggleCapture;
+- (void)startCapture;
+- (void)stopCapture;
 - (nonnull instancetype)init SWIFT_UNAVAILABLE;
 + (nonnull instancetype)new SWIFT_UNAVAILABLE_MSG("-init is unavailable");
 @end

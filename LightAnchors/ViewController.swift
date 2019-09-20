@@ -11,6 +11,7 @@ import ARKit
 import VideoToolbox
 import CoreMotion
 import LightAnchorFramework
+import LASwift
 
 let kLightData = "LightData"
 
@@ -18,6 +19,12 @@ let anchor1Location = SCNVector3(0,1,0)
 let anchor2Location = SCNVector3(1,1,0)
 let anchor3Location = SCNVector3(1,0,0)
 let anchor4Location = SCNVector3(0,0,0)
+
+//let anchor1Location = SCNVector3(0,2.9,0)
+//let anchor2Location = SCNVector3(5.23,2.9,0)
+//let anchor3Location = SCNVector3(5.23,0,0)
+//let anchor4Location = SCNVector3(0,0,0)
+
 
 class ViewController: UIViewController {
 
@@ -86,7 +93,7 @@ class ViewController: UIViewController {
     
     
     var cameraAngle:Float = 0.0
-    var cameraPosition = SCNVector3(0,0,0)
+ //   var cameraPosition = SCNVector3(0,0,0)
     
     let resolutionLabel = UILabel()
     let xLabel = UILabel()
@@ -99,6 +106,8 @@ class ViewController: UIViewController {
     let labelStackView = UIStackView()
 
     let firstNode = SCNNode()
+    
+//    var cameraPosition = SCNVector3(0, 0, 0)
     
 
     
@@ -333,10 +342,12 @@ class ViewController: UIViewController {
 
     
     @objc func startCapture(sender:UIButton) {
-        poseManager.toggleCapture()
-        if poseManager.capturing {
+        
+        if !poseManager.capturing {
             imageView.backgroundColor = imageViewBackgroundColor
+            poseManager.startCapture()
         } else {
+            poseManager.stopCapture()
             imageView.image = nil
             imageView.backgroundColor = UIColor.clear
             clusterView1.update(location: CGPoint(x: 0, y: 0), radius: 0.0)
@@ -609,6 +620,22 @@ extension ViewController: ARSCNViewDelegate {
 
 extension ViewController: ARSessionDelegate {
     func session(_ session: ARSession, didUpdate frame: ARFrame) {
+        let cameraPosition = SCNVector3(x: frame.camera.transform.columns.3.x, y: frame.camera.transform.columns.3.y, z: frame.camera.transform.columns.3.z)
+        
+        let mat = simd_float4x4(firstNode.transform)
+        let row1: [Double] = [Double(mat.columns.0.x), Double(mat.columns.1.x), Double(mat.columns.2.x), Double(mat.columns.3.x)]
+        let row2: [Double] = [Double(mat.columns.0.y), Double(mat.columns.1.y), Double(mat.columns.2.y), Double(mat.columns.3.y)]
+        let row3: [Double] = [Double(mat.columns.0.z), Double(mat.columns.1.z), Double(mat.columns.2.z), Double(mat.columns.3.z)]
+        let row4: [Double] = [Double(mat.columns.0.w), Double(mat.columns.1.w), Double(mat.columns.2.w), Double(mat.columns.3.w)]
+        let mat1 = Matrix([row1, row2, row3, row4])
+        let mat2 = inv(mat1)
+        
+        let pointAR = Vector([Double(cameraPosition.x), Double(cameraPosition.y), Double(cameraPosition.z), 1.0])
+        let pointGlobal = mat2 * Matrix(pointAR)
+        xLabel.text = String(format: "x: %f", pointGlobal[0])
+        yLabel.text = String(format: "y: %f", pointGlobal[1])
+        zLabel.text = String(format: "z: %f", pointGlobal[2])
+        
         poseManager.process(frame: frame)
         self.frameCount += 1
     }
@@ -717,7 +744,8 @@ extension UIImage {
 
 extension ViewController: LightAnchorPoseManagerDelegate {
     func lightAnchorPoseManager(_: LightAnchorPoseManager, didUpdate transform: SCNMatrix4) {
-        firstNode.transform = transform
+        sceneView.session.setWorldOrigin(relativeTransform: simd_float4x4(transform))
+        //firstNode.transform = transform
     }
     
     func lightAnchorPoseManager(_: LightAnchorPoseManager, didUpdatePointsFor codeIndex: Int, displayMeanX: Float, displayMeanY: Float, displayStdDevX: Float, displayStdDevY: Float) {
