@@ -1,0 +1,11 @@
+framework module LightAnchorFramework {
+  umbrella header "LightAnchorFramework.h"
+
+  export *
+  module * { export * }
+}
+
+module LightAnchorFramework.Swift {
+    header "LightAnchorFramework-Swift.h"
+    requires objc
+}
