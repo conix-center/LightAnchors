@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Scheme
-   LastUpgradeVersion = "0930"
+   LastUpgradeVersion = "1100"
    version = "1.3">
    <BuildAction
       parallelizeBuildables = "YES"
@@ -14,7 +14,7 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "5BC17554F67B60D9C75C17B0E7247D20"
+               BlueprintIdentifier = "EAD00746FB1650A7C697900757F688BA"
                BuildableName = "Pods_LightAnchorsUITests.framework"
                BlueprintName = "Pods-LightAnchorsUITests"
                ReferencedContainer = "container:Pods.xcodeproj">
@@ -45,7 +45,7 @@
       <MacroExpansion>
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "5BC17554F67B60D9C75C17B0E7247D20"
+            BlueprintIdentifier = "EAD00746FB1650A7C697900757F688BA"
             BuildableName = "Pods_LightAnchorsUITests.framework"
             BlueprintName = "Pods-LightAnchorsUITests"
             ReferencedContainer = "container:Pods.xcodeproj">

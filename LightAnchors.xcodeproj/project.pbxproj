@@ -3,15 +3,13 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 50;
+	objectVersion = 51;
 	objects = {
 
 /* Begin PBXBuildFile section */
 		0FF7C0F51D0B74186887A1F1 /* Pods_LightAnchorsUITests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 05C621DE260EAF15ED278953 /* Pods_LightAnchorsUITests.framework */; };
 		1C4D7CF28630A57034699C40 /* Pods_LightAnchors.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3BE12FB78B5070BF62CD0DBE /* Pods_LightAnchors.framework */; };
 		3309515F11427810EDFB0EE6 /* Pods_LightAnchorsTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F1311B24491BE9B212BA1053 /* Pods_LightAnchorsTests.framework */; };
-		5B662E5223352C3000369F55 /* LightAnchorFramework.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5B662E5023352C2900369F55 /* LightAnchorFramework.framework */; };
-		5B662E5323352C3000369F55 /* LightAnchorFramework.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 5B662E5023352C2900369F55 /* LightAnchorFramework.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		5B6E33D121B6E248000B31E6 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B6E33D021B6E248000B31E6 /* AppDelegate.swift */; };
 		5B6E33D321B6E248000B31E6 /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B6E33D221B6E248000B31E6 /* ViewController.swift */; };
 		5B6E33D821B6E24A000B31E6 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 5B6E33D721B6E24A000B31E6 /* Assets.xcassets */; };
@@ -25,6 +23,8 @@
 		5BC4347C2208F4D60029305F /* SettingsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5BC4347B2208F4D60029305F /* SettingsViewController.swift */; };
 		5BDE5B4E23283CDB00D7F404 /* lightanchorkernels.metallib in Resources */ = {isa = PBXBuildFile; fileRef = 5BDE5B4D23283CDA00D7F404 /* lightanchorkernels.metallib */; };
 		5BE4562622331058006BC514 /* Thread.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5BE4562522331058006BC514 /* Thread.swift */; };
+		5BF669652342AB5400D25E7D /* LightAnchorFramework.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5BF669632342AB4900D25E7D /* LightAnchorFramework.framework */; };
+		5BF669662342AB5400D25E7D /* LightAnchorFramework.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 5BF669632342AB4900D25E7D /* LightAnchorFramework.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -51,7 +51,7 @@
 			dstPath = "";
 			dstSubfolderSpec = 10;
 			files = (
-				5B662E5323352C3000369F55 /* LightAnchorFramework.framework in Embed Frameworks */,
+				5BF669662342AB5400D25E7D /* LightAnchorFramework.framework in Embed Frameworks */,
 			);
 			name = "Embed Frameworks";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -63,7 +63,6 @@
 		35C01BB11E3789A19AD4277C /* Pods-LightAnchors.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-LightAnchors.release.xcconfig"; path = "Pods/Target Support Files/Pods-LightAnchors/Pods-LightAnchors.release.xcconfig"; sourceTree = "<group>"; };
 		3BE12FB78B5070BF62CD0DBE /* Pods_LightAnchors.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_LightAnchors.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		43ED1FA7B9EF205C3E1E41DC /* Pods-LightAnchorsTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-LightAnchorsTests.release.xcconfig"; path = "Pods/Target Support Files/Pods-LightAnchorsTests/Pods-LightAnchorsTests.release.xcconfig"; sourceTree = "<group>"; };
-		5B662E5023352C2900369F55 /* LightAnchorFramework.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = LightAnchorFramework.framework; sourceTree = "<group>"; };
 		5B6E33CD21B6E248000B31E6 /* LightAnchors.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LightAnchors.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		5B6E33D021B6E248000B31E6 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		5B6E33D221B6E248000B31E6 /* ViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewController.swift; sourceTree = "<group>"; };
@@ -84,6 +83,7 @@
 		5BC4347B2208F4D60029305F /* SettingsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsViewController.swift; sourceTree = "<group>"; };
 		5BDE5B4D23283CDA00D7F404 /* lightanchorkernels.metallib */ = {isa = PBXFileReference; lastKnownFileType = "archive.metal-library"; path = lightanchorkernels.metallib; sourceTree = "<group>"; };
 		5BE4562522331058006BC514 /* Thread.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Thread.swift; sourceTree = "<group>"; };
+		5BF669632342AB4900D25E7D /* LightAnchorFramework.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = LightAnchorFramework.framework; sourceTree = "<group>"; };
 		6813E58DFF30140F621ED662 /* Pods-LightAnchorsUITests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-LightAnchorsUITests.release.xcconfig"; path = "Pods/Target Support Files/Pods-LightAnchorsUITests/Pods-LightAnchorsUITests.release.xcconfig"; sourceTree = "<group>"; };
 		9287034912DA078DDB247BDC /* Pods-LightAnchorsTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-LightAnchorsTests.debug.xcconfig"; path = "Pods/Target Support Files/Pods-LightAnchorsTests/Pods-LightAnchorsTests.debug.xcconfig"; sourceTree = "<group>"; };
 		BB31D057674E100AC26013DF /* Pods-LightAnchors.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-LightAnchors.debug.xcconfig"; path = "Pods/Target Support Files/Pods-LightAnchors/Pods-LightAnchors.debug.xcconfig"; sourceTree = "<group>"; };
@@ -97,7 +97,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				1C4D7CF28630A57034699C40 /* Pods_LightAnchors.framework in Frameworks */,
-				5B662E5223352C3000369F55 /* LightAnchorFramework.framework in Frameworks */,
+				5BF669652342AB5400D25E7D /* LightAnchorFramework.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -123,7 +123,7 @@
 		08F6673109F3F64963D3E94D /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
-				5B662E5023352C2900369F55 /* LightAnchorFramework.framework */,
+				5BF669632342AB4900D25E7D /* LightAnchorFramework.framework */,
 				3BE12FB78B5070BF62CD0DBE /* Pods_LightAnchors.framework */,
 				F1311B24491BE9B212BA1053 /* Pods_LightAnchorsTests.framework */,
 				05C621DE260EAF15ED278953 /* Pods_LightAnchorsUITests.framework */,
@@ -378,17 +378,16 @@
 			buildActionMask = 2147483647;
 			files = (
 			);
-			inputPaths = (
-				"${SRCROOT}/Pods/Target Support Files/Pods-LightAnchors/Pods-LightAnchors-frameworks.sh",
-				"${BUILT_PRODUCTS_DIR}/LASwift/LASwift.framework",
+			inputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-LightAnchors/Pods-LightAnchors-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
 			name = "[CP] Embed Pods Frameworks";
-			outputPaths = (
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/LASwift.framework",
+			outputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-LightAnchors/Pods-LightAnchors-frameworks-${CONFIGURATION}-output-files.xcfilelist",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "\"${SRCROOT}/Pods/Target Support Files/Pods-LightAnchors/Pods-LightAnchors-frameworks.sh\"\n";
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-LightAnchors/Pods-LightAnchors-frameworks.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
 		EDB0EB8DB99CEDE20BD9DDD2 /* [CP] Check Pods Manifest.lock */ = {
@@ -593,7 +592,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = 6JYYU24LA8;
+				DEVELOPMENT_TEAM = 24D5JLAEA3;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)",
@@ -620,7 +619,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = 6JYYU24LA8;
+				DEVELOPMENT_TEAM = 24D5JLAEA3;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)",

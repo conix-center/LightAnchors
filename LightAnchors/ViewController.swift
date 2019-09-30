@@ -15,10 +15,16 @@ import LASwift
 
 let kLightData = "LightData"
 
-let anchor1Location = SCNVector3(0,1,0)
-let anchor2Location = SCNVector3(1,1,0)
-let anchor3Location = SCNVector3(1,0,0)
-let anchor4Location = SCNVector3(0,0,0)
+
+let anchor1Location = SCNVector3(3.643, 1.693, -1.640);
+let anchor2Location = SCNVector3(3.644, 2.375, -1.622);
+let anchor3Location = SCNVector3(3.671, 2.120, -1.031);
+let anchor4Location = SCNVector3(3.703, 1.739, -0.576);
+
+//let anchor1Location = SCNVector3(0,1,0)
+//let anchor2Location = SCNVector3(1,1,0)
+//let anchor3Location = SCNVector3(1,0,0)
+//let anchor4Location = SCNVector3(0,0,0)
 
 //let anchor1Location = SCNVector3(0,2.9,0)
 //let anchor2Location = SCNVector3(5.23,2.9,0)
@@ -273,7 +279,7 @@ class ViewController: UIViewController {
         
         let anchorLocations = [anchor1Location, anchor2Location, anchor3Location, anchor4Location]
         //poseManager.imageSize = ImageSize(width: Int(configuration.videoFormat.imageResolution.width), height: Int(configuration.videoFormat.imageResolution.height))
-        poseManager = LightAnchorPoseManager(imageWidth: Int(configuration.videoFormat.imageResolution.width), imageHeight: Int(configuration.videoFormat.imageResolution.height), anchorLocations: anchorLocations)
+        poseManager = LightAnchorPoseManager(imageWidth: Int(configuration.videoFormat.imageResolution.width), imageHeight: Int(configuration.videoFormat.imageResolution.height))
         poseManager.delegate = self
   
         resolutionLabel.text = String(format: "w: %d h: %d", poseManager.imageWidth, poseManager.imageHeight)

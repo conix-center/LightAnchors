@@ -5,7 +5,7 @@ DEPENDENCIES:
   - LASwift
 
 SPEC REPOS:
-  https://github.com/CocoaPods/Specs.git:
+  trunk:
     - LASwift
 
 SPEC CHECKSUMS:
@@ -13,4 +13,4 @@ SPEC CHECKSUMS:
 
 PODFILE CHECKSUM: 8fdbf3c39661bb1fbcb28faacd2b2ed36af66c80
 
-COCOAPODS: 1.5.0
+COCOAPODS: 1.8.0

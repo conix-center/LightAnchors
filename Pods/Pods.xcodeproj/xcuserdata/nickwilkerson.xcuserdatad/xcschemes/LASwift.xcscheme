@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Scheme
-   LastUpgradeVersion = "0930"
+   LastUpgradeVersion = "1100"
    version = "1.3">
    <BuildAction
       parallelizeBuildables = "YES"
@@ -14,10 +14,10 @@
             buildForArchiving = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "8B50218E9B63D759FE28A639D0531D50"
+               BlueprintIdentifier = "76F3007363F8A79E5FF1C2DD8F280F44"
+               BuildableName = "LASwift.framework"
                BlueprintName = "LASwift"
-               ReferencedContainer = "container:Pods.xcodeproj"
-               BuildableName = "LASwift.framework">
+               ReferencedContainer = "container:Pods.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>

@@ -195,8 +195,7 @@ SWIFT_CLASS("_TtC20LightAnchorFramework22LightAnchorPoseManager")
 @property (nonatomic) BOOL capturing;
 @property (nonatomic) NSInteger imageWidth;
 @property (nonatomic) NSInteger imageHeight;
-@property (nonatomic, copy) NSArray<NSValue *> * _Nonnull anchorLocations;
-- (nonnull instancetype)initWithImageWidth:(NSInteger)imageWidth imageHeight:(NSInteger)imageHeight anchorLocations:(NSArray<NSValue *> * _Nonnull)anchorLocations OBJC_DESIGNATED_INITIALIZER;
+- (nonnull instancetype)initWithImageWidth:(NSInteger)imageWidth imageHeight:(NSInteger)imageHeight OBJC_DESIGNATED_INITIALIZER;
 - (void)processWithFrame:(ARFrame * _Nonnull)frame;
 - (void)startCapture;
 - (void)stopCapture;
